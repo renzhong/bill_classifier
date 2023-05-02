@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import csv
+import re
 import codecs
 import os
 import chardet
@@ -16,11 +17,11 @@ from enum import Enum
 
 BUY_VEGETABLES_TIME_RANGE = 3600
 
-def str2timestamp(time_str):
+def str2timestamp(time_str, time_format):
     if len(time_str) == 0:
         return time.time()
 
-    dt_obj = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
+    dt_obj = datetime.strptime(time_str, time_format)
     return dt_obj.timestamp()
 
 def timestamp2str(t):
@@ -51,6 +52,7 @@ class ExpenseCategory(Enum):
     MEDICAL = '医疗'  # 医疗
     LARGE_ITEM = '大件'  # 大件
     VEHICLE_MAINTENANCE = '养车'  # 养车
+    SKIP = "skip" # skip
 
     def to_str(self) -> str:
         return self.value
@@ -58,6 +60,8 @@ class ExpenseCategory(Enum):
 item_category_dict = {
     "便利蜂购物": ExpenseCategory.CATERING,
     "手机充值": ExpenseCategory.WATER_ELECTRICITY_PROPERTY,
+    "余额宝-自动转入": ExpenseCategory.SKIP,
+    "转账备注:微信转账": ExpenseCategory.SKIP,
 }
 
 payee_category_dict = {
@@ -79,12 +83,29 @@ payee_category_dict = {
     "滴滴出行": ExpenseCategory.TRANSPORTATION,
     "嘀嗒出行": ExpenseCategory.TRANSPORTATION,
     "好功夫盲人按摩": ExpenseCategory.LEISURE_ENTERTAINMENT,
+    "云洗驿站": ExpenseCategory.VEHICLE_MAINTENANCE,
+    "北京春雨天下软件有限公司": ExpenseCategory.MEDICAL,
+    "叮咚买菜": ExpenseCategory.BUY_VEGETABLES,
+    "iCloud 由云上贵州运营": ExpenseCategory.WATER_ELECTRICITY_PROPERTY
 }
 
 payee_category_regular_dict = {
     "面馆": ExpenseCategory.CATERING,
     "麻辣烫": ExpenseCategory.CATERING,
     "医院": ExpenseCategory.MEDICAL,
+    "生鲜": ExpenseCategory.BUY_VEGETABLES,
+    "星巴克": ExpenseCategory.CATERING,
+    "麦当劳": ExpenseCategory.CATERING,
+    "达美乐": ExpenseCategory.CATERING,
+    "中石化": ExpenseCategory.TRANSPORTATION,
+    "廖记": ExpenseCategory.CATERING,
+    "养车": ExpenseCategory.VEHICLE_MAINTENANCE,
+    "宜家": ExpenseCategory.HOME_CONSTRUCTION,
+    "元气寿司": ExpenseCategory.CATERING,
+    "UNIQLO": ExpenseCategory.CLOTHING_SHOES_HATS,
+    "涿州中煤华谊汽车": ExpenseCategory.VEHICLE_MAINTENANCE,
+    "螺蛳粉": ExpenseCategory.CATERING,
+    "停车场": ExpenseCategory.TRANSPORTATION
 }
 
 item_category_regular_dict = {
@@ -94,6 +115,9 @@ item_category_regular_dict = {
     "牙膏": ExpenseCategory.DAILY_EXPENSES,
     "纸巾": ExpenseCategory.DAILY_EXPENSES,
     "阿玛尼": ExpenseCategory.SKINCARE_PRODUCTS,
+    "花呗自动还款": ExpenseCategory.SKIP,
+    "饿了么超级吃货卡": ExpenseCategory.CATERING
+
 }
 
 class BillItem:
@@ -138,9 +162,10 @@ def is_chinese_equal(s1: str, s2: str) -> bool:
     return s1.strip().encode('utf-8') == s2.strip().encode('utf-8')
 
 class AliPayBill(BaseBill):
-    def __init__(self, file_path, owner):
+    def __init__(self, file_path, owner, bill_time_format):
         self.file_path = file_path
         self.owner = owner
+        self.bill_time_format = bill_time_format
     
     def parse_from_file(self, bill_item_list):
         # 使用chardet检测文件的编码
@@ -176,21 +201,22 @@ class AliPayBill(BaseBill):
                         item_name = row[8]
                         bill_type_name = row[10]
                         order_id = row[1]
-                        bill_time = str2timestamp(row[3])
+                        bill_time = str2timestamp(row[3], self.bill_time_format)
                         if is_chinese_equal(bill_type_name, '收入'):
                             bill_type = BillType.INCOME
                         elif is_chinese_equal(bill_type_name, '支出'):
                             bill_type = BillType.EXPENSE
-                        elif is_chinese_equal(bill_type_name, '不计支出'):
+                        elif is_chinese_equal(bill_type_name, '不计收支'):
                             bill_type = BillType.OTHER
                         
                         bill_item = BillItem(float(amount), payee, item_name, bill_type, order_id, bill_time, "alipay", self.owner)
                         bill_item_list.append(bill_item)
 
 class WeChatBill(BaseBill):
-    def __init__(self, file_path, owner):
+    def __init__(self, file_path, owner, bill_time_format):
         self.file_path = file_path
         self.owner = owner
+        self.bill_time_format = bill_time_format
 
     def parse_from_file(self, bill_item_list):
         # 使用chardet检测文件的编码
@@ -221,12 +247,20 @@ class WeChatBill(BaseBill):
                     if print_flag:
                         if is_chinese_equal(row[0], "交易时间"):
                             continue
-                        amount = row[5].lstrip(chr(165)) # 去除 '¥' 符号
+                        amount = float(row[5].lstrip(chr(165))) # 去除 '¥' 符号
                         payee = row[2]
                         item_name = row[3]
                         bill_type_name = row[4]
                         order_id = row[8]
-                        bill_time = str2timestamp(row[0])
+                        bill_stat = row[7]
+                        if bill_stat.startswith("已退款"):
+                            pattern = r"￥(\d+\.\d+)"
+                            match = re.search(pattern, bill_stat)
+                            if match:
+                                number = float(match.group(1))
+                                amount = amount - number
+
+                        bill_time = str2timestamp(row[0], self.bill_time_format)
                         if is_chinese_equal(bill_type_name, '收入'):
                             bill_type = BillType.INCOME
                         elif is_chinese_equal(bill_type_name, '支出'):
@@ -234,39 +268,59 @@ class WeChatBill(BaseBill):
                         elif is_chinese_equal(bill_type_name, '不计支出'):
                             bill_type = BillType.OTHER
                         
-                        bill_item = BillItem(float(amount), payee, item_name, bill_type, order_id, bill_time, "wechat", self.owner)
+                        bill_item = BillItem(amount, payee, item_name, bill_type, order_id, bill_time, "wechat", self.owner)
                         bill_item_list.append(bill_item)
 
 def merge_items(bill_item_list: List[BillItem]) -> List[BillItem]:
     order_items = {}
+    merged_items = []
     for item in bill_item_list:
+        if not item.order_id:
+            item.category = ExpenseCategory.SKIP
+            merged_items.append(item)
+            continue
+
         if item.order_id not in order_items:
             order_items[item.order_id] = []
         order_items[item.order_id].append(item)
 
-    merged_items = []
     for order_id, items in order_items.items():
-        # split the items into two lists: expense items and refund items
-        expense_items = []
-        refund_items = []
-        for item in items:
-            if item.bill_type == BillType.OTHER and '退款' in item.item_name:
-                refund_items.append(item)
+        if len(items) == 1:
+            merged_items.append(items[0])
+        else:
+            for item in items:
+                print("order list:", item)
+            # split the items into two lists: expense items and refund items
+            expense_items = []
+            refund_items = []
+            for item in items:
+                if item.bill_type == BillType.OTHER and '退款' in item.item_name:
+                    refund_items.append(item)
+                else:
+                    expense_items.append(item)
+
+            # merge expense items
+            if expense_items:
+                merged_item = expense_items[0]
+                for item in expense_items[1:]:
+                    merged_item.amount += item.amount
+                # merged_items.append(merged_item)
+
+                # refund expense items
+                for item in refund_items:
+                    merged_item.amount -= item.amount
+
+                if merged_item.amount == 0.0:
+                    merged_item.category = ExpenseCategory.SKIP
+
+                merged_items.append(merged_item)
+                print("merge item:", merged_item)
             else:
-                expense_items.append(item)
+                for item in refund_items:
+                    print("merge all refund_item", item)
+                    merged_items.append(item)
 
-        # merge expense items
-        if expense_items:
-            merged_item = expense_items[0]
-            for item in expense_items[1:]:
-                merged_item.amount += item.amount
-            # merged_items.append(merged_item)
 
-            # refund expense items
-            for item in refund_items:
-                merged_item.amout -= item.amout
-
-            merged_items.append(merged_item)
     return merged_items
 
 def categorize_items(items: List[BillItem]) -> List[BillItem]:
@@ -316,29 +370,21 @@ def categorize_items(items: List[BillItem]) -> List[BillItem]:
                 break
             if bill_time - items[s].bill_time > BUY_VEGETABLES_TIME_RANGE:
                 s+=1
-                print("i:{} s++:{}".format(i, s))
             else:
                 break
-        print("i:{}".format(item))
         while True:
             if e+1 >= len(items):
                 break
-            print("e:{}".format(items[e+1]))
-            print("i:{} check e {} {}".format(i, e, items[e+1].bill_time - bill_time))
             if items[e+1].bill_time - bill_time < BUY_VEGETABLES_TIME_RANGE:
                 e+=1
-                print("i:{} e++:{}".format(i, e))
             else:
                 break
 
-        print("cur:{} s:{} {} e:{} {} info:{}".format(bill_time, items[s].bill_time, items[s].bill_time - bill_time, items[e].bill_time, items[e].bill_time - bill_time,
-                    item))
         for j in range(s, e):
             if j == i: 
                 continue
             if items[j].category == ExpenseCategory.BUY_VEGETABLES:
                 item.category = ExpenseCategory.BUY_VEGETABLES
-                print("set vegetory:{}".format(item));
                 break
 
 def record_to_excel(bill_item_list):
@@ -351,13 +397,14 @@ def record_to_excel(bill_item_list):
     #   4. 大类汇总金额
     #   5. 月份汇总金额
     
-    file_name = os.path.expanduser('~/Downloads/2.xlsx')
+    file_name = os.path.expanduser('~/Downloads/3.xlsx')
     sheet_name = "月度明细"
 
     expense_data = []
     income_data = []
     unknown_data = []
     other_data = []
+    skip_data = []
     for bill_item in bill_item_list:
         if bill_item.bill_type == BillType.INCOME:
             income_data.append({
@@ -396,8 +443,8 @@ def record_to_excel(bill_item_list):
                     "订单来源": bill_item.bill_source,
                     "Owner": bill_item.owner
                 })
-            else:
-                expense_data.append({
+            elif bill_item.category == ExpenseCategory.SKIP:
+                skip_data.append({
                     "金额": bill_item.amount,
                     "类别": bill_item.category.value,
                     "交易对象": bill_item.payee,
@@ -408,18 +455,45 @@ def record_to_excel(bill_item_list):
                     "订单来源": bill_item.bill_source,
                     "Owner": bill_item.owner
                 })
+            else:
+                if bill_item.amount == 0.0:
+                    skip_data.append({
+                        "金额": bill_item.amount,
+                        "类别": bill_item.category.value,
+                        "交易对象": bill_item.payee,
+                        "商品名称": bill_item.item_name,
+                        "收支类型": bill_item.bill_type.value,
+                        "订单号": bill_item.order_id,
+                        "订单发生时间": timestamp2str(bill_item.bill_time),
+                        "订单来源": bill_item.bill_source,
+                        "Owner": bill_item.owner
+                    })
+                else:
+                    expense_data.append({
+                        "金额": bill_item.amount,
+                        "类别": bill_item.category.value,
+                        "交易对象": bill_item.payee,
+                        "商品名称": bill_item.item_name,
+                        "收支类型": bill_item.bill_type.value,
+                        "订单号": bill_item.order_id,
+                        "订单发生时间": timestamp2str(bill_item.bill_time),
+                        "订单来源": bill_item.bill_source,
+                        "Owner": bill_item.owner
+                    })
     expense_df = pd.DataFrame(expense_data)
     income_df = pd.DataFrame(income_data)
+    skip_df = pd.DataFrame(skip_data)
     unknown_df = pd.DataFrame(unknown_data)
     other_df = pd.DataFrame(other_data)
 
-    n_rows = expense_df.shape[0]
+    n_rows = expense_df.shape[0] + unknown_df.shape[0]
 
     writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
     expense_df.to_excel(writer, sheet_name=sheet_name, index=False, )
-    unknown_df.to_excel(writer, sheet_name=sheet_name, index=False, startcol = 10)
-    other_df.to_excel(writer, sheet_name=sheet_name, index=False, startcol = 20)
-    income_df.to_excel(writer, sheet_name=sheet_name, index=False, startcol = 30)
+    unknown_df.to_excel(writer, sheet_name=sheet_name, index=False, startrow = len(expense_data)+1, header=False)
+    other_df.to_excel(writer, sheet_name=sheet_name, index=False, startcol = 10)
+    income_df.to_excel(writer, sheet_name=sheet_name, index=False, startcol = 20)
+    skip_df.to_excel(writer, sheet_name=sheet_name, index=False, startcol = 10, startrow = len(other_data) + 5)
 
     workbook = writer.book
     worksheet = writer.sheets[sheet_name]
@@ -429,27 +503,34 @@ def record_to_excel(bill_item_list):
     # for i in range(n_rows):
     worksheet.data_validation('B2:B'+str(1+n_rows), {'validate' : 'list', 'source': source})
 
+    # worksheet.column_dimensions['A'].width = 20
+    worksheet.set_column('A:A', 15)
+    worksheet.set_column('B:B', 15)
+    worksheet.set_column('C:D', 30)
+    worksheet.set_column('E:E', 15)
+    # worksheet.set_column('A:A', 15)
+
     workbook.close()
 
 if __name__ == "__main__":
     bill_item_list = []
 
-    zrz_alipay_file = os.path.expanduser('~/Downloads/alipay_record_20230423_1335_1.csv')
-    zrz_wechat_file = os.path.expanduser('~/Downloads/微信支付账单(20230401-20230424)/微信支付账单(20230401-20230424).csv')
-    cwx_alipay_file = os.path.expanduser('~/Downloads/alipay_record_20230424_1541_1.csv')
-    cwx_wechat_file = os.path.expanduser('~/Downloads/微信支付账单(20230401-20230425).csv')
+    zrz_alipay_file = os.path.expanduser('~/Downloads/账单/四月/zrz_alipay.csv')
+    zrz_wechat_file = os.path.expanduser('~/Downloads/账单/四月/zrz_wc.csv')
+    cwx_alipay_file = os.path.expanduser('~/Downloads/账单/四月/cwx_alipay.csv')
+    cwx_wechat_file = os.path.expanduser('~/Downloads/账单/四月/cwx_wc.csv')
 
-    zrz_alipay_bill = AliPayBill(zrz_alipay_file, "zrz")
+    zrz_alipay_bill = AliPayBill(zrz_alipay_file, "zrz", '%Y-%m-%d %H:%M:%S')
     zrz_alipay_bill.parse_from_file(bill_item_list)
 
-    zrz_wechat_bill = WeChatBill(zrz_wechat_file, "zrz")
+    zrz_wechat_bill = WeChatBill(zrz_wechat_file, "zrz", '%Y-%m-%d %H:%M:%S')
     zrz_wechat_bill.parse_from_file(bill_item_list)
 
-    cwx_alipay_bill = AliPayBill(cwx_alipay_file, "cwx")
+    cwx_alipay_bill = AliPayBill(cwx_alipay_file, "cwx", '%Y-%m-%d %H:%M:%S')
     cwx_alipay_bill.parse_from_file(bill_item_list)
 
-    # cwx_wechat_bill = WeChatBill(cwx_wechat_file, "cwx")
-    # cwx_wechat_bill.parse_from_file(bill_item_list)
+    cwx_wechat_bill = WeChatBill(cwx_wechat_file, "cwx", '%Y-%m-%d %H:%M:%S')
+    cwx_wechat_bill.parse_from_file(bill_item_list)
 
     print("---normal--------", len(bill_item_list))
     for bill_item in bill_item_list:
