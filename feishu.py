@@ -1,6 +1,9 @@
 import requests
 import json
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 def timestamp2str(t):
     dt_object = datetime.datetime.fromtimestamp(t)
@@ -24,7 +27,8 @@ class FeishuSheetAPI:
         "养车": "#F8E6AB",
         "unknown": "#A9EFE6",
         "skip": "#FDE2E2",
-        "退款": "#ECE2FE"
+        "退款": "#ECE2FE",
+        "收入": "#D9F5D6"
     }
 
     def __init__(self, user_access_token, sheet_token):
@@ -46,11 +50,11 @@ class FeishuSheetAPI:
         rsp = json.loads(response.text)
 
         if rsp['code'] != 0:
-            print("GetSheetCount error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("GetSheetCount error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return {}
 
         if 'data' not in rsp or 'sheets' not in rsp['data']:
-            print("GetSheetCount response format error rsp:", rsp)
+            logging.error("GetSheetCount response format error rsp:{}".format(rsp))
             return {}
 
         sheet_info = {}
@@ -64,6 +68,7 @@ class FeishuSheetAPI:
         return sheet_info
 
     def AddNewSheet(self, sheet_name, index):
+        logging.info("add new sheet: {}".format(sheet_name))
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/sheets_batch_update".format(self.sheet_token)
 
         data = {
@@ -90,28 +95,29 @@ class FeishuSheetAPI:
         rsp = json.loads(response.text)
 
         if rsp['code'] != 0:
-            print("AddNewSheet error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("AddNewSheet error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return False, ""
         else:
             if 'data' not in rsp or 'replies' not in rsp['data']:
-                print("AddNewSheet response format error rsp:", rsp)
+                logging.error("AddNewSheet response format error rsp:", rsp)
                 return False, ""
 
             replies = rsp['data']['replies']
             if len(replies) == 0:
-                print("AddNewSheet response format error rsp:", rsp)
+                logging.error("AddNewSheet response format error rsp:", rsp)
                 return False, ""
 
             reply = replies[0]
             if 'addSheet' not in reply or \
                 'properties' not in reply['addSheet'] or \
                 'sheetId' not in reply['addSheet']['properties']:
-                print("AddNewSheet response format error rsp:", rsp)
+                logging.error("AddNewSheet response format error rsp:", rsp)
                 return False, ""
 
             return True, reply['addSheet']['properties']['sheetId']
 
     def AddRows(self, sheet_id, add_rows):
+        logging.info("add row: {}".format(add_rows))
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/dimension_range".format(self.sheet_token)
 
         data = {
@@ -134,7 +140,7 @@ class FeishuSheetAPI:
         rsp = json.loads(response.text)
 
         if rsp['code'] != 0:
-            print("AddRows error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("AddRows error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return False
         else:
             return True
@@ -166,14 +172,14 @@ class FeishuSheetAPI:
         rsp = json.loads(response.text)
 
         if rsp['code'] != 0:
-            print("AddDataValidation error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("AddDataValidation error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return False
         else:
             return True
 
     def RecordBillItem(self, sheet_range, bill_item_list):
+        logging.info("RecordBillItem sheet_range:{} list size:{}".format(sheet_range, len(bill_item_list)))
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values".format(self.sheet_token)
-        print("RecordBillItem sheet_range:{} list size:{}".format(sheet_range, len(bill_item_list)))
 
         data = {
                 "valueRange": {
@@ -207,16 +213,16 @@ class FeishuSheetAPI:
 
         rsp = json.loads(response.text)
         if rsp['code'] != 0:
-            print("RecordBillItem error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("RecordBillItem error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return False
         else:
             return True
 
     def UpdateMonthSheetData(self, month_sheet_id, detail_sheet_name, column, row_size):
+        logging.info("UpdateMonthSheetInfo:{} column:{} row_size:{}".format(detail_sheet_name, column, row_size))
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values".format(self.sheet_token)
 
-        value_range = "{}!{}2:{}17".format(month_sheet_id, column, column)
-        print("UpdateMonthSheetInfo:", value_range)
+        value_range = "{}!{}2:{}18".format(month_sheet_id, column, column)
 
         data = {
                 "valueRange": {
@@ -224,7 +230,7 @@ class FeishuSheetAPI:
                     "values": []
                 }
             }
-        for line in range(2, 17):
+        for line in range(2, 18):
             data['valueRange']['values'].append(
                     [{
                         "type": "formula",
@@ -237,7 +243,7 @@ class FeishuSheetAPI:
                         "text": "=SUM({}2:{}15) - {}16".format(column, column, column)
                     }])
 
-        print("data:", data)
+        logging.debug("data:", data)
 
         # 设置请求头
         headers = {
@@ -250,7 +256,7 @@ class FeishuSheetAPI:
 
         rsp = json.loads(response.text)
         if rsp['code'] != 0:
-            print("UpdateMonthSheetInfo error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("UpdateMonthSheetInfo error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return False
         else:
             return True
@@ -260,12 +266,7 @@ class FeishuSheetAPI:
 
         value_range = "{}!{}2:{}17".format(month_sheet_id, column, column)
 
-        data = {
-                "ranges": value_range,
-                "style": {
-                    "formatter": '#,##0'
-                }
-        }
+        data_str = '{{"data":[{{"ranges": "{}", "style": {{"formatter": "#,##0"}}}}]}}'.format(value_range)
         # 设置请求头
         headers = {
                 'Content-Type': 'application/json', 
@@ -273,11 +274,11 @@ class FeishuSheetAPI:
             }
 
         # 发送请求并获取响应
-        response = requests.put(url, json=data, headers=headers)
+        response = requests.put(url, data=data_str, headers=headers)
 
         rsp = json.loads(response.text)
         if rsp['code'] != 0:
-            print("UpdateMonthSheetFormatter error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("UpdateMonthSheetFormatter error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return False
         else:
             return True
@@ -293,30 +294,3 @@ class FeishuSheetAPI:
 
         self.UpdateMonthSheetFormatter(month_sheet_id, column)
         self.UpdateMonthSheetData(month_sheet_id, detail_sheet_name, column, row_size)
-
-
-    # def ModifyBillItemFormatter(self, sheet_id, formatter_range):
-    #     url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/styles_batch_update".format(self.sheet_token)
-
-    #     data = {
-    #             "ranges": formatter_range,
-    #             "style": {
-    #                 "": '#,##0'
-    #             }
-    #     }
-    #     # 设置请求头
-    #     headers = {
-    #             'Content-Type': 'application/json', 
-    #             'Authorization': 'Bearer ' + self.user_access_token
-    #         }
-
-    #     # 发送请求并获取响应
-    #     response = requests.put(url, json=data, headers=headers)
-
-    #     rsp = json.loads(response.text)
-    #     if rsp['code'] != 0:
-    #         print("UpdateMonthSheetFormatter error code:{} msg:{}".format(rsp['code'], rsp['msg']))
-    #         return False
-    #     else:
-    #         return True
-

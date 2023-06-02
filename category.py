@@ -20,6 +20,7 @@ class ExpenseCategory(Enum):
     LARGE_ITEM = '大件'  # 大件
     VEHICLE_MAINTENANCE = '养车'  # 养车
     SKIP = "skip" # skip
+    INCOME = "收入" # 收入
 
     def to_str(self) -> str:
         return self.value
@@ -55,7 +56,10 @@ payee_category_dict = {
     "云洗驿站": ExpenseCategory.VEHICLE_MAINTENANCE,
     "北京春雨天下软件有限公司": ExpenseCategory.MEDICAL,
     "叮咚买菜": ExpenseCategory.BUY_VEGETABLES,
-    "iCloud 由云上贵州运营": ExpenseCategory.WATER_ELECTRICITY_PROPERTY
+    "iCloud 由云上贵州运营": ExpenseCategory.WATER_ELECTRICITY_PROPERTY,
+    "陕面王": ExpenseCategory.CATERING,
+    "怪兽充电": ExpenseCategory.WATER_ELECTRICITY_PROPERTY,
+    "小电": ExpenseCategory.WATER_ELECTRICITY_PROPERTY,
 }
 
 payee_category_regular_dict = {
@@ -74,7 +78,11 @@ payee_category_regular_dict = {
     "UNIQLO": ExpenseCategory.CLOTHING_SHOES_HATS,
     "涿州中煤华谊汽车": ExpenseCategory.VEHICLE_MAINTENANCE,
     "螺蛳粉": ExpenseCategory.CATERING,
-    "停车场": ExpenseCategory.TRANSPORTATION
+    "停车场": ExpenseCategory.TRANSPORTATION,
+    "瑞兆居酒屋": ExpenseCategory.CATERING,
+    "赛百味": ExpenseCategory.CATERING,
+    "有礼有面": ExpenseCategory.WATER_ELECTRICITY_PROPERTY,
+    "好嫂子": ExpenseCategory.WATER_ELECTRICITY_PROPERTY,
 }
 
 item_category_regular_dict = {
@@ -85,13 +93,12 @@ item_category_regular_dict = {
     "纸巾": ExpenseCategory.DAILY_EXPENSES,
     "阿玛尼": ExpenseCategory.SKINCARE_PRODUCTS,
     "花呗自动还款": ExpenseCategory.SKIP,
-    "饿了么超级吃货卡": ExpenseCategory.CATERING
-
+    "饿了么超级吃货卡": ExpenseCategory.CATERING,
+    "花王": ExpenseCategory.DAILY_EXPENSES,
+    "船袜": ExpenseCategory.CLOTHING_SHOES_HATS,
+    "衬衫": ExpenseCategory.CLOTHING_SHOES_HATS,
+    "裙": ExpenseCategory.CLOTHING_SHOES_HATS,
+    "裤": ExpenseCategory.CLOTHING_SHOES_HATS,
+    "鞋": ExpenseCategory.CLOTHING_SHOES_HATS,
+    "帽": ExpenseCategory.CLOTHING_SHOES_HATS,
 }
-
-remove_item_dict = {
-    "iCloud 由云上贵州运营": True,
-    "北京轨道交通路网管理有限公司": True
-}
-
-
