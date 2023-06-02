@@ -50,6 +50,7 @@ payee_category_dict = {
     "肉卷也疯狂": ExpenseCategory.CATERING,
     "滴滴出行": ExpenseCategory.TRANSPORTATION,
     "嘀嗒出行": ExpenseCategory.TRANSPORTATION,
+    "哈啰出行": ExpenseCategory.TRANSPORTATION,
     "好功夫盲人按摩": ExpenseCategory.LEISURE_ENTERTAINMENT,
     "云洗驿站": ExpenseCategory.VEHICLE_MAINTENANCE,
     "北京春雨天下软件有限公司": ExpenseCategory.MEDICAL,
