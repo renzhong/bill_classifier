@@ -126,7 +126,11 @@ class WeChatBill(BaseBill):
                                 number = float(match.group(1))
                                 amount = amount - number
 
-                        bill_time = str2timestamp(row[0], self.bill_time_format)
+                        if (len(row[0]) == 19):
+                            bill_time = str2timestamp(row[0], "%Y-%m-%d %H:%M:%S")
+                        else:
+                            bill_time = str2timestamp(row[0], "%Y/%m/%d %H:%M")
+
                         if is_chinese_equal(bill_type_name, '收入'):
                             bill_type = BillType.INCOME
                         elif is_chinese_equal(bill_type_name, '支出'):
@@ -348,13 +352,13 @@ def debug_bill_item_list(prefix, bill_item_list):
 if __name__ == "__main__":
     record_type = "feishu" # feishu/excel
     # https://open.feishu.cn/api-explorer/cli_a4d9e0b5c9bd100b
-    user_access_token = 'u-3vXDMelgB4Apv8vHwtOcHdkg3bJB14zFpG0000W2ELf8'
+    user_access_token = 'u-09xoTf7jJ3UHimYa5ttDwQkg13D5143xNW0054.2EHec'
     sheet_token = "shtcnsqbKMuExxV1Eryr2fAS8hh"
 
-    zrz_alipay_file = os.path.expanduser('~/Downloads/账单/四月/zrz_alipay.csv')
-    zrz_wechat_file = os.path.expanduser('~/Downloads/账单/四月/zrz_wc.csv')
-    cwx_alipay_file = os.path.expanduser('~/Downloads/账单/四月/cwx_alipay.csv')
-    cwx_wechat_file = os.path.expanduser('~/Downloads/账单/四月/cwx_wc.csv')
+    zrz_alipay_file = os.path.expanduser('~/Downloads/账单/五月/zrz_alipay1.csv')
+    zrz_wechat_file = os.path.expanduser('~/Downloads/账单/五月/zrz_weixin.csv')
+    cwx_alipay_file = os.path.expanduser('~/Downloads/账单/五月/cwx_alipay1.csv')
+    cwx_wechat_file = os.path.expanduser('~/Downloads/账单/五月/cwx_weixin.csv')
 
     bill_item_list = []
 
