@@ -59,3 +59,10 @@
 # 近期 TODO
 - 写入数据出错时，如何修复数据
 - 检测账单逻辑，确认是否有错误账单问题
+
+## gpt 分类
+- https://platform.openai.com/examples
+- https://github.com/openai/openai-quickstart-python
+- https://platform.openai.com/docs/guides/gpt/completions-api
+- https://platform.openai.com/docs/api-reference/images
+
