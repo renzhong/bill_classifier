@@ -1,21 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
 import csv
 import re
 import codecs
 import os
 import chardet
 import logging
-import pandas as pd
-from openpyxl import load_workbook
 import datetime
-import json
 from feishu import FeishuSheetAPI
-from category import *
+from category import *  # noqa: F403
 from bill import BillType, ExpenseCategory, BillItem
-from util import is_chinese_equal, str2timestamp, timestamp2str
+from util import is_chinese_equal, str2timestamp
 from excel import record_to_excel
 from typing import List
 
@@ -136,7 +132,7 @@ class WeChatBill(BaseBill):
         bill_rows = self.get_bill_rows()
 
         for row in bill_rows:
-            amount = float(row[5].lstrip(chr(165))) # 去除 '¥' 符号
+            amount = float(row[5].lstrip(chr(165)))  # 去除 '¥' 符号
             payee = row[2]
             item_name = row[3]
             bill_type_name = row[4]
@@ -172,7 +168,7 @@ def merge_refund_items(bill_item_list: List[BillItem]) -> List[BillItem]:
         if not item.order_id:
             item.category = ExpenseCategory.SKIP
             merged_items.append(item)
-            logging.debug("miss order ".format(item))
+            logging.debug("miss order {}".format(item))
             continue
 
         if item.order_id not in order_items:
@@ -270,19 +266,19 @@ def categorize_items(items: List[BillItem]) -> List[BillItem]:
             continue
 
         # 处理完全匹配
-        if item.item_name in item_category_dict:
-            item.category = item_category_dict[item.item_name]
+        if item.item_name in item_category_dict:  # noqa: F405
+            item.category = item_category_dict[item.item_name]  # noqa: F405
             mark_count += 1
             continue
 
-        if item.payee in payee_category_dict:
-            item.category = payee_category_dict[item.payee]
+        if item.payee in payee_category_dict:  # noqa: F405
+            item.category = payee_category_dict[item.payee]  # noqa: F405
             mark_count += 1
             continue
 
         # 处理正则匹配
         item_reg_match = False
-        for item_reg, category in item_category_regular_dict.items():
+        for item_reg, category in item_category_regular_dict.items():  # noqa: F405
             if item_reg in item.item_name:
                 item.category = category
                 item_reg_match = True
@@ -292,7 +288,7 @@ def categorize_items(items: List[BillItem]) -> List[BillItem]:
             continue
 
         payee_reg_match = False
-        for payee_reg, category in payee_category_regular_dict.items():
+        for payee_reg, category in payee_category_regular_dict.items():  # noqa: F405
             if payee_reg in item.payee:
                 item.category = category
                 payee_reg_match = True
@@ -319,14 +315,14 @@ def categorize_items(items: List[BillItem]) -> List[BillItem]:
             if s == i:
                 break
             if bill_time - items[s].bill_time > BUY_VEGETABLES_TIME_RANGE:
-                s+=1
+                s += 1
             else:
                 break
         while True:
-            if e+1 >= len(items):
+            if e + 1 >= len(items):
                 break
-            if items[e+1].bill_time - bill_time < BUY_VEGETABLES_TIME_RANGE:
-                e+=1
+            if items[e + 1].bill_time - bill_time < BUY_VEGETABLES_TIME_RANGE:
+                e += 1
             else:
                 break
 
@@ -360,7 +356,7 @@ def record_to_feishu(user_access_token, sheet_token, bill_item_dict):
     sheet_id = ''
     if sheet_name not in sheet_info:
         ret,sheet_id = feishu_sheet_api.AddNewSheet(sheet_name, len(sheet_info))
-        if not ret :
+        if not ret:
             return False
     else:
         sheet_id = sheet_info[sheet_name]['sheet_id']
@@ -370,7 +366,7 @@ def record_to_feishu(user_access_token, sheet_token, bill_item_dict):
         bill_size = bill_size + len(bill_item_dict['expense'])
 
     if bill_size > 200:
-        add_rows = (bill_size//100 + 1)*100
+        add_rows = (bill_size // 100 + 1) * 100
         feishu_sheet_api.AddRows(sheet_id, add_rows)
 
     validation_range = "{}!B1:B{}".format(sheet_id, bill_size)
@@ -404,7 +400,7 @@ def debug_bill_item_list(prefix, bill_item_list):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    record_type = "feishu" # feishu/excel
+    record_type = "feishu"  # feishu/excel
     # https://open.feishu.cn/api-explorer/cli_a4d9e0b5c9bd100b
     user_access_token = 'u-3S21.HMa50tUKw7xL3JQ7hkg31LB14Fzha00h0.2ELrs'
     sheet_token = "TgkqskKvnhZG65tJGOkc1qLhnQb"
@@ -474,7 +470,7 @@ if __name__ == "__main__":
             income_data.append(bill_item)
         elif bill_item.bill_type == BillType.OTHER:
             other_data.append(bill_item)
-        else: # EXPENSE
+        else:  # EXPENSE
             if bill_item.category == ExpenseCategory.UNKNOWN:
                 unknown_data.append(bill_item)
             elif bill_item.category == ExpenseCategory.SKIP:
@@ -491,8 +487,8 @@ if __name__ == "__main__":
     expense_data.extend(income_data)
 
     bill_item_dict = {
-            "expense": expense_data,
-            "income": income_data,
+        "expense": expense_data,
+        "income": income_data,
     }
 
     if record_type == "excel":
