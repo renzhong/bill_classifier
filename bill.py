@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from typing import List
-
 from enum import Enum
 from category import ExpenseCategory
 from util import timestamp2str
@@ -40,7 +38,7 @@ Amount: {}
     bill_source: {}
     owner: {}
     category: {}""".format(
-                        self.amount, self.payee, self.item_name, self.bill_type.name,
-                        self.order_id, timestamp2str(self.bill_time), self.bill_source, self.owner,
-                        self.category.to_str()
-                    )
+            self.amount, self.payee, self.item_name, self.bill_type.name,
+            self.order_id, timestamp2str(self.bill_time), self.bill_source, self.owner,
+            self.category.to_str()
+        )

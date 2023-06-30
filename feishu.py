@@ -40,8 +40,8 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + self.user_access_token
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + self.user_access_token
         }
 
         # 发送请求并获取响应
@@ -62,7 +62,7 @@ class FeishuSheetAPI:
             title = sheet['title']
             sheet_id = sheet['sheet_id']
             sheet_info[title] = {
-                    "sheet_id": sheet_id
+                "sheet_id": sheet_id
             }
 
         return sheet_info
@@ -81,13 +81,13 @@ class FeishuSheetAPI:
                         }
                     }
                 }]
-            }
+        }
 
         # 设置请求头
         headers = {
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + self.user_access_token
-            }
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
 
         # 发送请求并获取响应
         response = requests.post(url, json=data, headers=headers)
@@ -109,8 +109,8 @@ class FeishuSheetAPI:
 
             reply = replies[0]
             if 'addSheet' not in reply or \
-                'properties' not in reply['addSheet'] or \
-                'sheetId' not in reply['addSheet']['properties']:
+                    'properties' not in reply['addSheet'] or \
+                    'sheetId' not in reply['addSheet']['properties']:
                 logging.error("AddNewSheet response format error rsp:", rsp)
                 return False, ""
 
@@ -121,18 +121,18 @@ class FeishuSheetAPI:
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/dimension_range".format(self.sheet_token)
 
         data = {
-                "dimension":{
-                    "sheetId": sheet_id, 
-                    "majorDimension": "ROWS", 
-                    "length": add_rows
-                }
+            "dimension":{
+                "sheetId": sheet_id, 
+                "majorDimension": "ROWS", 
+                "length": add_rows
             }
+        }
 
         # 设置请求头
         headers = {
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + self.user_access_token
-            }
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
 
         # 发送请求并获取响应
         response = requests.post(url, json=data, headers=headers)
@@ -149,22 +149,22 @@ class FeishuSheetAPI:
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/dataValidation".format(self.sheet_token)
 
         data = {
-                "range": validation_range,
-                "dataValidationType": "list", 
-                "dataValidation":{
-                    "conditionValues": list(FeishuSheetAPI.type_color_dict.keys()),
-                    "options": {
-                        "highlightValidData": True, 
-                        "colors": list(FeishuSheetAPI.type_color_dict.values())
-                    }
+            "range": validation_range,
+            "dataValidationType": "list", 
+            "dataValidation":{
+                "conditionValues": list(FeishuSheetAPI.type_color_dict.keys()),
+                "options": {
+                    "highlightValidData": True, 
+                    "colors": list(FeishuSheetAPI.type_color_dict.values())
                 }
             }
+        }
 
         # 设置请求头
         headers = {
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + self.user_access_token
-            }
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
 
         # 发送请求并获取响应
         response = requests.post(url, json=data, headers=headers)
@@ -182,11 +182,11 @@ class FeishuSheetAPI:
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values".format(self.sheet_token)
 
         data = {
-                "valueRange": {
-                    "range": sheet_range,
-                    "values": []
-                }
+            "valueRange": {
+                "range": sheet_range,
+                "values": []
             }
+        }
 
         for item in bill_item_list:
             line_data = [
@@ -204,9 +204,9 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + self.user_access_token
-            }
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
 
         # 发送请求并获取响应
         response = requests.put(url, json=data, headers=headers)
@@ -225,31 +225,32 @@ class FeishuSheetAPI:
         value_range = "{}!{}2:{}18".format(month_sheet_id, column, column)
 
         data = {
-                "valueRange": {
-                    "range": value_range,
-                    "values": []
-                }
+            "valueRange": {
+                "range": value_range,
+                "values": []
             }
+        }
+
         for line in range(2, 18):
             data['valueRange']['values'].append(
-                    [{
-                        "type": "formula",
-                        "text": "=SUMIF('{}'!B1:B{}, A{}, '{}'!A1:A{})".format(detail_sheet_name, row_size, line, detail_sheet_name, row_size)
-                    }])
+                [{
+                    "type": "formula",
+                    "text": "=SUMIF('{}'!B1:B{}, A{}, '{}'!A1:A{})".format(detail_sheet_name, row_size, line, detail_sheet_name, row_size)
+                }])
 
         data['valueRange']['values'].append(
-                    [{
-                        "type": "formula",
-                        "text": "=SUM({}2:{}15) - {}16".format(column, column, column)
-                    }])
+            [{
+                "type": "formula",
+                "text": "=SUM({}2:{}15) - {}16".format(column, column, column)
+            }])
 
         logging.debug("data:", data)
 
         # 设置请求头
         headers = {
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + self.user_access_token
-            }
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
 
         # 发送请求并获取响应
         response = requests.put(url, json=data, headers=headers)
@@ -269,9 +270,9 @@ class FeishuSheetAPI:
         data_str = '{{"data":[{{"ranges": "{}", "style": {{"formatter": "#,##0"}}}}]}}'.format(value_range)
         # 设置请求头
         headers = {
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + self.user_access_token
-            }
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
 
         # 发送请求并获取响应
         response = requests.put(url, data=data_str, headers=headers)
