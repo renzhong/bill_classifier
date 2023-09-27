@@ -492,7 +492,6 @@ if __name__ == "__main__":
     bill_config = BillConfig(config)
 
     openai.api_key = bill_config.gpt_config.api_key
-    sys.exit()
 
     zrz_alipay_file = os.path.expanduser('~/Downloads/账单/八月/zrz_alipay1.csv')
     zrz_wechat_file = os.path.expanduser('~/Downloads/账单/八月/zrz_wechat.csv')
