@@ -1,6 +1,5 @@
 import os
 import openai
-import json
 import logging
 
 class GPTClassifier:
@@ -40,7 +39,7 @@ class GPTClassifier:
 if __name__ == '__main__':
     openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    from category import * # noqa: F403
+    from category import expense_category_mapping  # noqa: F403
     classifier = GPTClassifier()
     text = classifier.call("7-ELEVEn北京黄寺大街西侧店消费", "7-11(SEB)")
     print(text)
@@ -48,5 +47,3 @@ if __name__ == '__main__':
         print("text not in expense_category_mapping")
     else:
         print("text in expense_category_mapping")
-
-

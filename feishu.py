@@ -2,7 +2,7 @@ import requests
 import json
 import datetime
 import logging
-from category import *  # noqa: F403
+from category import expense_category_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
@@ -85,7 +85,7 @@ class FeishuSheetAPI:
                 {
                     "addSheet": {
                         "properties": {
-                            "title": sheet_name, 
+                            "title": sheet_name,
                             "index": index
                         }
                     }
@@ -94,7 +94,7 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
@@ -131,15 +131,15 @@ class FeishuSheetAPI:
 
         data = {
             "dimension":{
-                "sheetId": sheet_id, 
-                "majorDimension": "ROWS", 
+                "sheetId": sheet_id,
+                "majorDimension": "ROWS",
                 "length": add_rows
             }
         }
 
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
@@ -159,11 +159,11 @@ class FeishuSheetAPI:
 
         data = {
             "range": validation_range,
-            "dataValidationType": "list", 
+            "dataValidationType": "list",
             "dataValidation":{
                 "conditionValues": list(validation_dict.keys()),
                 "options": {
-                    "highlightValidData": True, 
+                    "highlightValidData": True,
                     "colors": list(validation_dict.values())
                 }
             }
@@ -171,7 +171,7 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
@@ -214,7 +214,7 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
@@ -256,7 +256,7 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
@@ -278,7 +278,7 @@ class FeishuSheetAPI:
         data_str = '{{"data":[{{"ranges": "{}", "style": {{"formatter": "#,##0"}}}}]}}'.format(value_range)
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
@@ -295,7 +295,7 @@ class FeishuSheetAPI:
     def UpdateMonthSheetInfo(self, month_sheet_id, detail_sheet_name, row_size):
         now = datetime.datetime.now()  # 获取当前日期时间
         month_int = now.month
-        if now.day < 15:  
+        if now.day < 15:
             last_month = now - datetime.timedelta(days=20)  # 计算上个月的日期时间
             month_int = last_month.month
 
@@ -309,7 +309,7 @@ class FeishuSheetAPI:
 
         # 设置请求头
         headers = {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + self.user_access_token
         }
 
