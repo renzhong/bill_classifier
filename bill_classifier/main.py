@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import csv
 import re
-import codecs
-import os
-import chardet
+import os  # noqa
 import logging
 import datetime
 import sys
@@ -15,156 +12,16 @@ import openai
 
 from feishu import FeishuSheetAPI
 from category import ExpenseCategory, expense_category_mapping, CategoryInfo
-from bill import BillType, BillItem, ClassifyAlg
-from util import is_chinese_equal, str2timestamp
+from bill_item import BillType, BillItem, ClassifyAlg
+from bill import AliPayBill, WeChatBill
 from typing import List
 from classifier_gpt import GPTClassifier
 from bill_config import BillConfig
+from bill_file import BillFile
 
 BUY_VEGETABLES_TIME_RANGE = 3600
 
 logger = logging.getLogger(__name__)
-
-class BaseBill:
-    def __init__(self, file_path):
-        self.file_path = file_path
-
-    def parse_from_file(self):
-        pass
-
-class AliPayBill(BaseBill):
-    def __init__(self, file_path, owner, bill_time_format):
-        self.file_path = file_path
-        self.owner = owner
-        self.bill_time_format = bill_time_format
-
-    def get_bill_rows(self):
-        # 使用chardet检测文件的编码
-        with open(self.file_path, 'rb') as f:
-            result = chardet.detect(f.read())
-            file_encoding = result['encoding']
-
-        bill_rows = []
-        # 使用csv模块读取CSV文件，并自动根据文件编码进行解码
-        with codecs.open(self.file_path, 'r', encoding=file_encoding) as f:
-            reader = csv.reader(f)
-
-            # 初始化标志变量
-            print_flag = False
-
-            # 循环读取每一行并打印指定列
-            for row in reader:
-                row = [col.strip() for col in row]
-                if row[0].startswith('------'):
-                    # 如果读到了第一个"------"行，将标志变量设置为True
-                    if not print_flag:
-                        print_flag = True
-                    # 如果读到了第二个"------"行，将标志变量设置为False，并停止打印
-                    else:
-                        print_flag = False
-                        break
-                else:
-                    # 如果标志变量为True，打印当前行
-                    if print_flag:
-                        if is_chinese_equal(row[0], "交易号"):
-                            continue
-                        bill_rows.append(row)
-
-        return bill_rows
-
-    def parse_from_file(self, bill_item_list):
-        bill_rows = self.get_bill_rows()
-
-        for row in bill_rows:
-            amount = row[9]
-            payee = row[7]
-            item_name = row[8]
-            bill_type_name = row[10]
-            order_id = row[1]
-            bill_time = str2timestamp(row[3], self.bill_time_format)
-            if is_chinese_equal(bill_type_name, '收入'):
-                bill_type = BillType.INCOME
-            elif is_chinese_equal(bill_type_name, '支出'):
-                bill_type = BillType.EXPENSE
-            elif is_chinese_equal(bill_type_name, '不计收支'):
-                bill_type = BillType.OTHER
-
-            bill_item = BillItem(float(amount), payee, item_name, bill_type, order_id, bill_time, "alipay", self.owner)
-
-            bill_item_list.append(bill_item)
-
-class WeChatBill(BaseBill):
-    def __init__(self, file_path, owner, bill_time_format):
-        self.file_path = file_path
-        self.owner = owner
-        self.bill_time_format = bill_time_format
-
-    def get_bill_rows(self):
-        # 使用chardet检测文件的编码
-        with open(self.file_path, 'rb') as f:
-            result = chardet.detect(f.read())
-            file_encoding = result['encoding']
-
-        bill_rows = []
-
-        # 使用csv模块读取CSV文件，并自动根据文件编码进行解码
-        with codecs.open(self.file_path, 'r', encoding=file_encoding) as f:
-            reader = csv.reader(f)
-
-            # 初始化标志变量
-            print_flag = False
-
-            # 循环读取每一行并打印指定列
-            for row in reader:
-                row = [col.strip() for col in row]
-                if row[0].startswith('------'):
-                    # 如果读到了第一个"------"行，将标志变量设置为True
-                    if not print_flag:
-                        print_flag = True
-                    # 如果读到了第二个"------"行，将标志变量设置为False，并停止打印
-                    else:
-                        print_flag = False
-                        break
-                else:
-                    # 如果标志变量为True，打印当前行
-                    if print_flag:
-                        if is_chinese_equal(row[0], "交易时间"):
-                            continue
-                        bill_rows.append(row)
-
-        return bill_rows
-
-    def parse_from_file(self, bill_item_list):
-        bill_rows = self.get_bill_rows()
-
-        for row in bill_rows:
-            amount = float(row[5].lstrip(chr(165)))  # 去除 '¥' 符号
-            payee = row[2]
-            item_name = row[3]
-            bill_type_name = row[4]
-            order_id = row[8]
-            bill_stat = row[7]
-            if bill_stat.startswith("已退款"):
-                pattern = r"￥(\d+\.\d+)"
-                match = re.search(pattern, bill_stat)
-                if match:
-                    number = float(match.group(1))
-                    amount = amount - number
-
-            if (len(row[0]) == 19):
-                bill_time = str2timestamp(row[0], "%Y-%m-%d %H:%M:%S")
-            else:
-                bill_time = str2timestamp(row[0], "%Y/%m/%d %H:%M")
-
-            if is_chinese_equal(bill_type_name, '收入'):
-                bill_type = BillType.INCOME
-            elif is_chinese_equal(bill_type_name, '支出'):
-                bill_type = BillType.EXPENSE
-            elif is_chinese_equal(bill_type_name, '不计支出'):
-                bill_type = BillType.OTHER
-
-            bill_item = BillItem(amount, payee, item_name, bill_type, order_id, bill_time, "wechat", self.owner)
-            bill_item_list.append(bill_item)
 
 def merge_refund_items(bill_item_list: List[BillItem]) -> List[BillItem]:
     logging.debug("合并退款账单 origin size:{}".format(len(bill_item_list)))
@@ -477,6 +334,24 @@ def debug_bill_item_list(prefix, bill_item_list):
     for bill_item in bill_item_list:
         logging.info(bill_item)
 
+def load_bill_file(config):
+    i = 1
+    bill_files = []
+    while (1):
+        section_name = f'bill{i}'
+        if not config.has_section(section_name):
+            break
+        file_name = config.get(section_name, "name")
+        bill_type = config.get(section_name, "type")
+        bill_owner = config.get(section_name, "owner")
+
+        bill_file = BillFile(file_name, bill_owner, bill_type)
+        bill_files.append(bill_file)
+        i = i + 1
+
+    return bill_files
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
@@ -493,40 +368,25 @@ if __name__ == "__main__":
 
     openai.api_key = bill_config.gpt_config.api_key
 
-    zrz_alipay_file = os.path.expanduser('~/Downloads/账单/八月/zrz_alipay1.csv')
-    zrz_wechat_file = os.path.expanduser('~/Downloads/账单/八月/zrz_wechat.csv')
-    cwx_alipay_file = os.path.expanduser('~/Downloads/账单/八月/cwx_alipay1.csv')
-    cwx_wechat_file = os.path.expanduser('~/Downloads/账单/八月/cwx_wechat.csv')
+    bill_files = load_bill_file(config)
+    logging.debug("bill_files:{}".format(len(bill_files)))
 
     bill_item_list = []
 
-    logging.info("prepare manage zrz alipay bill")
-    zrz_alipay_list = []
-    zrz_alipay_bill = AliPayBill(zrz_alipay_file, "zrz", '%Y-%m-%d %H:%M:%S')
-    zrz_alipay_bill.parse_from_file(zrz_alipay_list)
-    bill_item_list.extend(zrz_alipay_list)
-    logging.info("zrz alipay bill item:{}".format(len(zrz_alipay_list)))
+    for bill_file in bill_files:
+        bill = None
+        logging.debug("bill_file: {} {} {}".format(bill_file.file_name, bill_file.bill_owner, bill_file.bill_type))
+        if bill_file.bill_type == "alipay":
+            bill = AliPayBill(bill_file)
+        elif bill_file.bill_type == "wechat":
+            bill = WeChatBill(bill_file)
 
-    logging.info("prepare manage zrz wechat bill")
-    zrz_wechat_list = []
-    zrz_wechat_bill = WeChatBill(zrz_wechat_file, "zrz", '%Y-%m-%d %H:%M:%S')
-    zrz_wechat_bill.parse_from_file(zrz_wechat_list)
-    bill_item_list.extend(zrz_wechat_list)
-    logging.info("zrz wechat bill item:{}".format(len(zrz_wechat_list)))
+        item_list = []
+        bill.parse_from_file(item_list)
 
-    logging.info("prepare manage cwx alipay bill")
-    cwx_alipay_list = []
-    cwx_alipay_bill = AliPayBill(cwx_alipay_file, "cwx", '%Y-%m-%d %H:%M:%S')
-    cwx_alipay_bill.parse_from_file(cwx_alipay_list)
-    bill_item_list.extend(cwx_alipay_list)
-    logging.info("cwx alipay bill item:{}".format(len(cwx_alipay_list)))
+        logging.info("{} {} bill item:{}".format(bill.owner, bill.bill_type, len(item_list)))
 
-    logging.info("prepare manage cwx wechat bill")
-    cwx_wechat_list = []
-    cwx_wechat_bill = WeChatBill(cwx_wechat_file, "cwx", '%Y-%m-%d %H:%M:%S')
-    cwx_wechat_bill.parse_from_file(cwx_wechat_list)
-    bill_item_list.extend(cwx_wechat_list)
-    logging.info("cwx wechat bill item:{}".format(len(cwx_wechat_list)))
+        bill_item_list.extend(item_list)
 
     logging.info("all bill item:{}".format(len(bill_item_list)))
 
