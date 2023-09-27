@@ -1,4 +1,4 @@
-import configparser
+# import configparser
 
 class FeishuConfig:
     user_access_token: str
@@ -29,4 +29,3 @@ class BillConfig:
         self.gpt_config = GPTConfig()
         self.gpt_config.api_key = config.get('gpt', 'api_key')
         self.gpt_config.call_limit = int(config.get('gpt', 'call_limit'))
-

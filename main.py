@@ -14,12 +14,12 @@ import argparse
 import openai
 
 from feishu import FeishuSheetAPI
-from category import *  # noqa: F403
-from bill import BillType, ExpenseCategory, BillItem, ClassifyAlg
+from category import ExpenseCategory, expense_category_mapping, CategoryInfo
+from bill import BillType, BillItem, ClassifyAlg
 from util import is_chinese_equal, str2timestamp
 from typing import List
 from classifier_gpt import GPTClassifier
-from bill_config import BillConfig, FeishuConfig, GPTConfig
+from bill_config import BillConfig
 
 BUY_VEGETABLES_TIME_RANGE = 3600
 
@@ -71,7 +71,7 @@ class AliPayBill(BaseBill):
                         bill_rows.append(row)
 
         return bill_rows
-    
+
     def parse_from_file(self, bill_item_list):
         bill_rows = self.get_bill_rows()
 
@@ -88,7 +88,7 @@ class AliPayBill(BaseBill):
                 bill_type = BillType.EXPENSE
             elif is_chinese_equal(bill_type_name, '不计收支'):
                 bill_type = BillType.OTHER
-            
+
             bill_item = BillItem(float(amount), payee, item_name, bill_type, order_id, bill_time, "alipay", self.owner)
 
             bill_item_list.append(bill_item)
@@ -162,7 +162,7 @@ class WeChatBill(BaseBill):
                 bill_type = BillType.EXPENSE
             elif is_chinese_equal(bill_type_name, '不计支出'):
                 bill_type = BillType.OTHER
-            
+
             bill_item = BillItem(amount, payee, item_name, bill_type, order_id, bill_time, "wechat", self.owner)
             bill_item_list.append(bill_item)
 
@@ -223,7 +223,7 @@ def merge_refund_items(bill_item_list: List[BillItem]) -> List[BillItem]:
 
 def merge_balance_items(bill_item_list: List[BillItem]) -> List[BillItem]:
     regex_pattern = r'^余额宝.*收益发放$'
-    
+
     balance_items = {}
     last_items = []
 
@@ -259,23 +259,23 @@ def InitCategoryInfo(user_access_token: str, sheet_token: str):
 
     range_name = '125297'
 
-    ret, category_info.payee_category_dict = feishu_api.GetCategoryClassificationInfo(range_name+'!A:B')
-    if not ret :
+    ret, category_info.payee_category_dict = feishu_api.GetCategoryClassificationInfo(range_name + '!A:B')
+    if not ret:
         logging.error("获取分类信息失败")
         return False, {}
 
-    ret, category_info.item_category_dict = feishu_api.GetCategoryClassificationInfo(range_name+'!D:E')
-    if not ret :
+    ret, category_info.item_category_dict = feishu_api.GetCategoryClassificationInfo(range_name + '!D:E')
+    if not ret:
         logging.error("获取分类信息失败")
         return False, {}
 
-    ret, category_info.payee_category_regular_dict = feishu_api.GetCategoryClassificationInfo(range_name+'!G:H')
-    if not ret :
+    ret, category_info.payee_category_regular_dict = feishu_api.GetCategoryClassificationInfo(range_name + '!G:H')
+    if not ret:
         logging.error("获取分类信息失败")
         return False, {}
 
-    ret, category_info.item_category_regular_dict = feishu_api.GetCategoryClassificationInfo(range_name+'!J:K')
-    if not ret :
+    ret, category_info.item_category_regular_dict = feishu_api.GetCategoryClassificationInfo(range_name + '!J:K')
+    if not ret:
         logging.error("获取分类信息失败")
         return False, {}
 
@@ -291,7 +291,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
     # set expense category for each item
     # 策略 1
     ret, category_info = InitCategoryInfo(bill_config.feishu_config.user_access_token, bill_config.feishu_config.category_sheet_token)
-    if not ret :
+    if not ret:
         logging.error("获取分类信息失败")
         return False
 
@@ -344,7 +344,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
     logging.debug("计算 category 前已标记过 category 的 item size:{}".format(marked_item_count))
     logging.debug("计算 category 时标记为 skip 的 item size:{}".format(mark_skip_count))
     logging.debug("计算 category 时标记为有效值的 item size:{}".format(mark_count))
-                  
+
 
     mark_count = 0
     # 策略 2
@@ -370,7 +370,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
                 break
 
         for j in range(s, e):
-            if j == i: 
+            if j == i:
                 continue
             if items[j].category == ExpenseCategory.BUY_VEGETABLES:
                 item.category = ExpenseCategory.BUY_VEGETABLES
@@ -382,14 +382,14 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
     # 策略 3
     mark_count = 0
     classifier = GPTClassifier()
-    call_limit = bill_config.gpt_config.call_limit 
+    call_limit = bill_config.gpt_config.call_limit
     for i, item in enumerate(items):
         if call_limit >= 0 and mark_count == call_limit:
             break
 
         if item.category != ExpenseCategory.UNKNOWN:
             continue
-        
+
         # 过滤一些无法识别的数据
         if item.payee == '美团' or item.payee == '美团平台商户':
             continue
@@ -430,7 +430,7 @@ def record_to_feishu(feishu_config, bill_item_dict):
 
     month_str = GetMonth()
     sheet_name = "账单明细 " + month_str
-    
+
     sheet_id = ''
     if sheet_name not in sheet_info:
         ret,sheet_id = feishu_sheet_api.AddNewSheet(sheet_name, len(sheet_info))
@@ -492,6 +492,7 @@ if __name__ == "__main__":
     bill_config = BillConfig(config)
 
     openai.api_key = bill_config.gpt_config.api_key
+    sys.exit()
 
     zrz_alipay_file = os.path.expanduser('~/Downloads/账单/八月/zrz_alipay1.csv')
     zrz_wechat_file = os.path.expanduser('~/Downloads/账单/八月/zrz_wechat.csv')
@@ -543,7 +544,7 @@ if __name__ == "__main__":
 
     #   2. 划分到某个大类
     ret = categorize_items(bill_item_list, bill_config)
-    if not ret :
+    if not ret:
         sys.exit()
 
     if logger.isEnabledFor(logging.DEBUG):

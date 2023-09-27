@@ -35,8 +35,8 @@ class BillItem:
         self.bill_time = bill_time      # 订单发生时间
         self.bill_source = bill_source  # 订单来源（alipay/wechat）
         self.owner = owner              # 账单人（zrz/cwx）
-        self.category = ExpenseCategory.UNKNOWN # 分类
-        self.classify_alg = ClassifyAlg.UNKNOWN # 识别模式
+        self.category = ExpenseCategory.UNKNOWN  # 分类
+        self.classify_alg = ClassifyAlg.UNKNOWN  # 识别模式
 
     def __str__(self):
         return """
