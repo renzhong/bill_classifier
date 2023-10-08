@@ -33,11 +33,8 @@ class AliPayBill(BaseBill):
         self.bill_type = 'AliPay'
 
     def get_bill_rows(self):
-        # 使用chardet检测文件的编码
-        with open(self.file_path, 'rb') as f:
-            result = chardet.detect(f.read())
-            file_encoding = result['encoding']
-
+        # 使用chardet检测文件的编码, 微信账单使用 utf
+        file_encoding = 'gbk'
         bill_rows = []
         # 使用csv模块读取CSV文件，并自动根据文件编码进行解码
         with codecs.open(self.file_path, 'r', encoding=file_encoding) as f:
@@ -95,11 +92,8 @@ class WeChatBill(BaseBill):
         self.bill_type = 'WeChat'
 
     def get_bill_rows(self):
-        # 使用chardet检测文件的编码
-        with open(self.file_path, 'rb') as f:
-            result = chardet.detect(f.read())
-            file_encoding = result['encoding']
-
+        # 使用chardet检测文件的编码, 微信账单使用 utf
+        file_encoding = 'utf-8'
         bill_rows = []
 
         # 使用csv模块读取CSV文件，并自动根据文件编码进行解码

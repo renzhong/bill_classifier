@@ -10,6 +10,30 @@ def timestamp2str(t):
     dt_object = datetime.datetime.fromtimestamp(t)
     return dt_object.strftime("%Y-%m-%d %H:%M:%S")
 
+class FeishuUnit:
+    row = '1'
+    col = 'A'
+    def __init__(self, row, col):
+        self.row = row
+        self.col = col
+
+    def GetCol(self, offset=0):
+        if offset == 0:
+            return self.col
+        new_col_int = ord(self.col) - ord('A') + 1 + offset
+        new_col = chr(ord('A') + new_col_int - 1)
+
+        return new_col
+
+    def GetRow(self, offset=0):
+        if offset == 0:
+            return self.row
+        new_row = int(self.row) + offset
+
+        return str(new_row)
+
+
+
 class FeishuSheetAPI:
     category_color_dict = {
         "水电物业": "#BACEFD",
@@ -154,7 +178,37 @@ class FeishuSheetAPI:
         else:
             return True
 
+    def AddCols(self, sheet_id, add_cols):
+        logging.info("表内增加空白列: {}".format(add_cols))
+        url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/dimension_range".format(self.sheet_token)
+
+        data = {
+            "dimension":{
+                "sheetId": sheet_id,
+                "majorDimension": "COLUMNS",
+                "length": add_cols
+            }
+        }
+
+        # 设置请求头
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
+
+        # 发送请求并获取响应
+        response = requests.post(url, json=data, headers=headers)
+
+        rsp = json.loads(response.text)
+
+        if rsp['code'] != 0:
+            logging.error("AddCols error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            return False
+        else:
+            return True
+
     def AddDataValidation(self, sheet_id, validation_range, validation_dict):
+        # TODO: 是否需要 AddRows
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/dataValidation".format(self.sheet_token)
 
         data = {
@@ -232,7 +286,7 @@ class FeishuSheetAPI:
         logging.info("更新月度表:{} column:{} row_size:{}".format(detail_sheet_name, column, row_size))
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values".format(self.sheet_token)
 
-        value_range = "{}!{}2:{}18".format(month_sheet_id, column, column)
+        value_range = "{}!{}2:{}20".format(month_sheet_id, column, column)
 
         data = {
             "valueRange": {
@@ -241,17 +295,18 @@ class FeishuSheetAPI:
             }
         }
 
-        for line in range(2, 18):
+        for line in range(2, 19):
             data['valueRange']['values'].append(
                 [{
                     "type": "formula",
                     "text": "=SUMIF('{}'!B1:B{}, A{}, '{}'!A1:A{})".format(detail_sheet_name, row_size, line, detail_sheet_name, row_size)
                 }])
 
+        # 所有账单包括(unknown) - 退款
         data['valueRange']['values'].append(
             [{
                 "type": "formula",
-                "text": "=SUM({}2:{}15) - {}16".format(column, column, column)
+                "text": "=SUM({}2:{}16) - {}18".format(column, column, column)
             }])
 
         # 设置请求头
@@ -295,8 +350,8 @@ class FeishuSheetAPI:
     def UpdateMonthSheetInfo(self, month_sheet_id, detail_sheet_name, row_size):
         now = datetime.datetime.now()  # 获取当前日期时间
         month_int = now.month
-        if now.day < 15:
-            last_month = now - datetime.timedelta(days=20)  # 计算上个月的日期时间
+        if now.day < 20:
+            last_month = now - datetime.timedelta(days=30)  # 计算上个月的日期时间
             month_int = last_month.month
 
         column = chr(ord('A') + month_int)
@@ -327,7 +382,7 @@ class FeishuSheetAPI:
         values = rsp['data']['valueRange']['values']
         value_map = {}
         for value in values[1:]:
-            key = value[0]
+            key = str(value[0])
             category = expense_category_mapping[value[1]]
             value_map[key] = category
 

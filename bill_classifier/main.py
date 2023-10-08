@@ -9,7 +9,7 @@ import configparser
 import argparse
 import openai
 
-from feishu import FeishuSheetAPI
+from feishu import FeishuSheetAPI, FeishuUnit
 from category import ExpenseCategory
 from bill_item import BillType, ClassifyAlg
 from bill import AliPayBill, WeChatBill
@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 def GetMonth():
     now = datetime.datetime.now()  # 获取当前日期时间
     month_str = ''
-    if now.day >= 15:  # 如果今天是每个月的最后3天或最后一天
+    if now.day >= 20:  # 如果今天是每个月的最后10天
         month_str = now.strftime('%Y%m')  # 输出当前年月字符串，格式为YYYYMM
-    else:  # 如果今天是每个月的前10天
-        last_month = now - datetime.timedelta(days=20)  # 计算上个月的日期时间
+    else:  # 如果今天是每个月的前20天
+        last_month = now - datetime.timedelta(days=30)  # 计算上个月的日期时间
         month_str = last_month.strftime('%Y%m')  # 输出上个月的年月字符串，格式为YYYYMM
 
     return month_str
@@ -50,26 +50,36 @@ def record_to_feishu(feishu_config, bill_item_dict):
 
     bill_size = 0
     if "expense" in bill_item_dict:
-        bill_size = bill_size + len(bill_item_dict['expense'])
+        bill_size = len(bill_item_dict['expense'])
+    logging.info("expense item 数量: {}".format(bill_size))
+
+    # TODO: 直接写数据, 由 feishu 类来动态扩展空白行或者空白列
+    start_pos = FeishuUnit('1', 'A')
 
     if bill_size > 200:
         add_rows = (bill_size // 100 + 1) * 100
         feishu_sheet_api.AddRows(sheet_id, add_rows)
 
-    validation_range = "{}!B1:B{}".format(sheet_id, bill_size)
+    validation_range = "{}!{}{}:{}{}".format(sheet_id, start_pos.GetCol(offset=1), start_pos.GetRow(), start_pos.GetCol(offset=1), start_pos.GetRow(offset=bill_size-1))
+    logging.info("category_color_dict validation_range:{}".format(validation_range))
     feishu_sheet_api.AddDataValidation(sheet_id, validation_range, feishu_sheet_api.category_color_dict)
-    validation_range = "{}!I1:I{}".format(sheet_id, bill_size)
+
+    validation_range = "{}!{}{}:{}{}".format(sheet_id, start_pos.GetCol(offset=8), start_pos.GetRow(), start_pos.GetCol(offset=8), start_pos.GetRow(offset=bill_size-1))
+    logging.info("alg_color_dict validation_range:{}".format(validation_range))
     feishu_sheet_api.AddDataValidation(sheet_id, validation_range, feishu_sheet_api.alg_color_dict)
 
-    sheet_range = "{}!A1:I{}".format(sheet_id, bill_size)
+    sheet_range = "{}!{}{}:{}{}".format(sheet_id, start_pos.GetCol(), start_pos.GetRow(), start_pos.GetCol(offset=8), start_pos.GetRow(offset=bill_size-1))
+    logging.info("bill_item sheet_range:{}".format(sheet_range))
     feishu_sheet_api.RecordBillItem(sheet_range, bill_item_dict['expense'])
 
-    check_start_row = 1
     if 'income' in bill_item_dict:
-        check_end_row = check_start_row + len(bill_item_dict['income']) - 1
-        sheet_range = "{}!K{}:S{}".format(sheet_id, check_start_row, check_end_row)
+        check_pos = FeishuUnit('1', 'K')
+        bill_size = len(bill_item_dict['income'])
+        logging.info("check item 数量: {}".format(bill_size))
+
+        sheet_range = "{}!{}{}:{}{}".format(sheet_id, check_pos.GetCol(), check_pos.GetRow(), check_pos.GetCol(offset=8), check_pos.GetRow(offset=bill_size-1))
+        logging.info("check_item sheet_range:{}".format(sheet_range))
         feishu_sheet_api.RecordBillItem(sheet_range, bill_item_dict['income'])
-        check_start_row = check_end_row + 2
 
     month_detail_sheet_id = sheet_info['月度明细']['sheet_id']
     feishu_sheet_api.UpdateMonthSheetInfo(month_detail_sheet_id, sheet_name, len(bill_item_dict['expense']))
@@ -140,9 +150,11 @@ if __name__ == "__main__":
 
     logging.info("all bill item:{}".format(len(bill_item_list)))
 
-    ret = bill_strategy(bill_item_list, bill_config)
+    ret, bill_item_list = bill_strategy(bill_item_list, bill_config)
     if not ret:
         sys.exit()
+
+    logging.info("标记类型后 item:{}".format(len(bill_item_list)))
 
     # # 分析数据
     # #   1. 合并退款

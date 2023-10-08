@@ -271,5 +271,6 @@ def bill_strategy(bill_item_list, bill_config):
 
     #   2. 划分到某个大类
     ret = categorize_items(bill_item_list, bill_config)
+    logging.info("after categorize bill item:{}".format(len(bill_item_list)))
 
-    return ret
+    return ret, bill_item_list
