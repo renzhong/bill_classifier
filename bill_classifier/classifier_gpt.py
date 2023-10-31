@@ -19,7 +19,7 @@ class GPTClassifier:
         logging.debug("promt:{}".format(prompt))
         # TODO: 修改模型
         response = openai.Completion.create(
-            model="text-davinci-003",
+            model="gpt-3.5-turbo-instruct",
             prompt=prompt,
             temperature=0,
             # max_tokens=2000,
@@ -28,6 +28,7 @@ class GPTClassifier:
             presence_penalty=0.0
         )
 
+        print(response)
         finish_reason = response["choices"][0]["finish_reason"]
         text = response["choices"][0]["text"]
         if finish_reason != "stop":
