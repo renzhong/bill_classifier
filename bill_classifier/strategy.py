@@ -240,6 +240,10 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
         if item.payee == '美团' or item.payee == '美团平台商户':
             continue
 
+        pattern = r"订单编号"
+        if item.payee == '京东' and re.search(pattern, item.item_name):
+            continue
+
         text = classifier.call(item.item_name, item.payee)
         logging.info("gpt classifier:{} {} -> {}".format(item.item_name, item.payee, text))
         if len(text) == 0:
@@ -251,7 +255,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
         item.category = expense_category_mapping[text]
         item.classify_alg = ClassifyAlg.GPT
         mark_count += 1
-
+    logging.info("gpt cost token:{}".format(classifier.get_token_count()))
     logging.debug("GPT标记 item size:{}".format(mark_count))
 
     return True
