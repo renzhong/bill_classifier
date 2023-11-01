@@ -156,26 +156,6 @@ if __name__ == "__main__":
 
     logging.info("标记类型后 item:{}".format(len(bill_item_list)))
 
-    # # 分析数据
-    # #   1. 合并退款
-    # bill_item_list = merge_refund_items(bill_item_list)
-    # logging.info("after merge refund bill item:{}".format(len(bill_item_list)))
-
-    # #   2. 合并余额宝收益
-    # bill_item_list = merge_balance_items(bill_item_list)
-    # logging.info("after balance bill item:{}".format(len(bill_item_list)))
-
-    # bill_item_list = sorted(bill_item_list, key=lambda item: item.bill_time)
-
-    # #   2. 划分到某个大类
-    # ret = categorize_items(bill_item_list, bill_config)
-    # if not ret:
-    #     sys.exit()
-
-    # if logger.isEnabledFor(logging.DEBUG):
-    #     check_unknown_items(bill_item_list)
-    # logging.info("after category bill item:{}".format(len(bill_item_list)))
-
     # 拆分数据
     income_data = []
     expense_data = []
