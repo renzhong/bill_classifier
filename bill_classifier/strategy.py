@@ -190,14 +190,15 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
     logging.debug("计算 category 时标记为 skip 的 item size:{}".format(mark_skip_count))
     logging.debug("计算 category 时标记为有效值的 item size:{}".format(mark_count))
 
-
     mark_count = 0
     # 策略 2
     s = 0
     e = 0
     for i, item in enumerate(items):
-        if item.category != ExpenseCategory.UNKNOWN:
+        # 只处理 完全匹配的买菜账单
+        if item.category != ExpenseCategory.BUY_VEGETABLES or item.classify_alg != ClassifyAlg.MATCH:
             continue
+
         bill_time = item.bill_time
         while True:
             if s == i:
@@ -217,11 +218,11 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
         for j in range(s, e):
             if j == i:
                 continue
-            if items[j].category == ExpenseCategory.BUY_VEGETABLES:
-                item.category = ExpenseCategory.BUY_VEGETABLES
-                item.classify_alg = ClassifyAlg.WET_MARKET
+            if items[j].category == ExpenseCategory.UNKNOWN:
+                items[j].category = ExpenseCategory.BUY_VEGETABLES
+                items[j].classify_alg = ClassifyAlg.WET_MARKET
                 mark_count += 1
-                break
+
     logging.debug("时间段买菜标记 item size:{}".format(mark_count))
 
     # 策略 3
