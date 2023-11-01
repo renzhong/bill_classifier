@@ -8,11 +8,13 @@ class GPTClassifier:
     """
 
     class_list = "'餐饮','日常开支','服装鞋帽','护肤品','水电物业','医疗'"
+    token_count = 0
 
 
     def __init__(self, class_list = ""):
         if len(class_list) > 0:
             self.class_list = class_list
+        self.token_count = 0
 
     def call(self, item_name, payee):
         prompt = self.prompt_template.format(self.class_list, item_name, payee)
@@ -28,7 +30,9 @@ class GPTClassifier:
             presence_penalty=0.0
         )
 
-        print(response)
+        # logging.debug("chat response:{}".format(response))
+        self.token_count = self.token_count + response["usage"]["total_tokens"]
+
         finish_reason = response["choices"][0]["finish_reason"]
         text = response["choices"][0]["text"]
         if finish_reason != "stop":
@@ -36,6 +40,9 @@ class GPTClassifier:
             return ""
         text = text.strip("\n")
         return text
+
+    def get_token_count(self):
+        return self.token_count
 
 if __name__ == '__main__':
     openai.api_key = os.getenv("OPENAI_API_KEY")
