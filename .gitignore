@@ -1,2 +1,3 @@
 start.sh
 config/zc.ini
+.env
