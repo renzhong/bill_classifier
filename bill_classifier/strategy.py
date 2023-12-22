@@ -227,7 +227,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
 
     # 策略 3
     mark_count = 0
-    classifier = GPTClassifier()
+    classifier = GPTClassifier(bill_config.gpt_config.api_key)
     call_limit = bill_config.gpt_config.call_limit
     for i, item in enumerate(items):
         if call_limit >= 0 and mark_count == call_limit:

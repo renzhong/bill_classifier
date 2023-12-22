@@ -2,7 +2,10 @@ import requests
 import json
 import datetime
 import logging
-from category import expense_category_mapping
+from itertools import cycle
+from category import expense_category_mapping, ExpenseCategory
+from bill_item import ClassifyAlg
+from util import GetMonthInt
 
 logger = logging.getLogger(__name__)
 
@@ -32,37 +35,11 @@ class FeishuUnit:
 
         return str(new_row)
 
-
-
 class FeishuSheetAPI:
-    category_color_dict = {
-        "水电物业": "#BACEFD",
-        "餐饮": "#FED4A4",
-        "买菜": "#F76964",
-        "交通": "#F8E6AB",
-        "日常开支": "#A9EFE6",
-        "服装鞋帽": "#FDE2E2",
-        "护肤品": "#ECE2FE",
-        "人情往来": "#D9F5D6",
-        "休闲娱乐": "#F8DEF8",
-        "杂项": "#EEF6C6",
-        "家庭建设": "#BACEFD",
-        "医疗": "#FED4A4",
-        "大件": "#F76964",
-        "养车": "#F8E6AB",
-        "unknown": "#A9EFE6",
-        "skip": "#FDE2E2",
-        "退款": "#ECE2FE",
-        "收入": "#D9F5D6"
-    }
-
-    alg_color_dict = {
-        "完全匹配": "#BACEFD",
-        "模糊匹配": "#FED4A4",
-        "菜场模式": "#F76964",
-        "GPT模式": "#F8E6AB",
-        "无法识别": "#A9EFE6"
-    }
+    unit_color = [
+        "#BACEFD", "#FED4A4", "#F76964", "#F8E6AB", "#A9EFE6",
+        "#FDE2E2", "#ECE2FE", "#D9F5D6", "#F8DEF8", "#EEF6C6"
+    ]
 
     def __init__(self, user_access_token, sheet_token):
         self.user_access_token = user_access_token
@@ -207,18 +184,20 @@ class FeishuSheetAPI:
         else:
             return True
 
-    def AddDataValidation(self, sheet_id, validation_range, validation_dict):
+    def AddDataValidation(self, sheet_id, validation_range, validation_keys):
         # TODO: 是否需要 AddRows
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/dataValidation".format(self.sheet_token)
 
+        cycled_listc = cycle(self.unit_color)
+        validation_colors = [next(cycled_listc) for _ in validation_keys]
         data = {
             "range": validation_range,
             "dataValidationType": "list",
             "dataValidation":{
-                "conditionValues": list(validation_dict.keys()),
+                "conditionValues": list(validation_keys),
                 "options": {
                     "highlightValidData": True,
-                    "colors": list(validation_dict.values())
+                    "colors": list(validation_colors)
                 }
             }
         }
@@ -282,11 +261,14 @@ class FeishuSheetAPI:
         else:
             return True
 
-    def UpdateMonthSheetData(self, month_sheet_id, detail_sheet_name, column, row_size):
-        logging.info("更新月度表:{} column:{} row_size:{}".format(detail_sheet_name, column, row_size))
+    def UpdateMonthSheetData(self, month_sheet_id, detail_sheet_name, column, row_size, line_title):
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values".format(self.sheet_token)
 
-        value_range = "{}!{}2:{}20".format(month_sheet_id, column, column)
+        start_line = 2
+        end_line = start_line + len(line_title) - 1
+        value_range = "{}!{}{}:{}{}".format(month_sheet_id, column, start_line, column, end_line)
+
+        logging.info("更新月度表:{} column:{} row_size:{} range:{}".format(detail_sheet_name, column, row_size, value_range))
 
         data = {
             "valueRange": {
@@ -295,19 +277,31 @@ class FeishuSheetAPI:
             }
         }
 
-        for line in range(2, 19):
-            data['valueRange']['values'].append(
-                [{
-                    "type": "formula",
-                    "text": "=SUMIF('{}'!B1:B{}, A{}, '{}'!A1:A{})".format(detail_sheet_name, row_size, line, detail_sheet_name, row_size)
-                }])
+        # 找到退款行
+        refund_line = -1
+        skip_line = -1  # skip 以上都是统计项
+        for index, title in enumerate(line_title):
+            if title == '退款':
+                refund_line = start_line + index
+            if title == 'skip':
+                skip_line = start_line + index
 
-        # 所有账单包括(unknown) - 退款
-        data['valueRange']['values'].append(
-            [{
-                "type": "formula",
-                "text": "=SUM({}2:{}16) - {}18".format(column, column, column)
-            }])
+        for line in range(start_line, end_line + 1):
+            title = line_title[line - start_line]
+            if title == '合计':
+                # 所有账单包括(unknown) - 退款
+                data['valueRange']['values'].append(
+                    [{
+                        "type": "formula",
+                        "text": "=SUM({}{}:{}{}) - {}{}".format(column, start_line, column, skip_line - 1, column, refund_line)
+                    }])
+            else:
+                data['valueRange']['values'].append(
+                    [{
+                        "type": "formula",
+                        "text": "=SUMIF('{}'!B1:B{}, A{}, '{}'!A1:A{})".format(detail_sheet_name, row_size, line, detail_sheet_name, row_size)
+                    }])
+        print(data)
 
         # 设置请求头
         headers = {
@@ -325,10 +319,40 @@ class FeishuSheetAPI:
         else:
             return True
 
-    def UpdateMonthSheetFormatter(self, month_sheet_id, column):
+    def GetMonthSheetInfoLineTitle(self, month_sheet_id):
+        url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values/{}".format(self.sheet_token, "{}!A:A".format(month_sheet_id))
+
+        # 设置请求头
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
+
+        params = {
+            "valueRenderOption": "ToString"
+        }
+
+        response = requests.get(url, params=params, headers=headers)
+        rsp = json.loads(response.text)
+
+        if rsp['code'] != 0:
+            logging.error("GetCategoryClassificationInfo error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            return False, {}
+
+        values = rsp['data']['valueRange']['values']
+        titles = []
+        for value in values[1:]:
+            key = str(value[0])
+            titles.append(key)
+
+        return titles
+
+    def UpdateMonthSheetFormatter(self, month_sheet_id, column, line_title):
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/styles_batch_update".format(self.sheet_token)
 
-        value_range = "{}!{}2:{}17".format(month_sheet_id, column, column)
+        start_line = 2
+        end_line = start_line + len(line_title) - 1
+        value_range = "{}!{}{}:{}{}".format(month_sheet_id, column, start_line, column, end_line)
 
         data_str = '{{"data":[{{"ranges": "{}", "style": {{"formatter": "#,##0"}}}}]}}'.format(value_range)
         # 设置请求头
@@ -348,16 +372,16 @@ class FeishuSheetAPI:
             return True
 
     def UpdateMonthSheetInfo(self, month_sheet_id, detail_sheet_name, row_size):
-        now = datetime.datetime.now()  # 获取当前日期时间
-        month_int = now.month
-        if now.day < 20:
-            last_month = now - datetime.timedelta(days=30)  # 计算上个月的日期时间
-            month_int = last_month.month
+        column = chr(ord('A') + GetMonthInt())
 
-        column = chr(ord('A') + month_int)
+        line_title = self.GetMonthSheetInfoLineTitle(month_sheet_id)
 
-        self.UpdateMonthSheetFormatter(month_sheet_id, column)
-        self.UpdateMonthSheetData(month_sheet_id, detail_sheet_name, column, row_size)
+        for category in ExpenseCategory:
+            if category.value not in line_title:
+                logging.error("月度表中确实分类项:{}".format(category.value))
+
+        self.UpdateMonthSheetFormatter(month_sheet_id, column, line_title)
+        self.UpdateMonthSheetData(month_sheet_id, detail_sheet_name, column, row_size, line_title)
 
     def GetCategoryClassificationInfo(self, value_range):
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values/{}".format(self.sheet_token, value_range)
@@ -392,7 +416,9 @@ class FeishuSheetAPI:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    user_access_token = "u-fifoFx5btdxqPwSe0dTDgLlk6bfh1lHFgwG0h4ow2ARM"
-    sheet_token = "HwSRs3mvOhHUu6tY70mcFBnRnDe"
+    user_access_token = "u-dRYZEP8TV8IEULrbK0a1Zc01gzeN4kXFqgw015K026v2"
+    sheet_token = "VlGDs4wWJhIWDstJa04cvY5Pn3e"
     feishu_sheet_api = FeishuSheetAPI(user_access_token, sheet_token)
-    feishu_sheet_api.GetCategoryClassificationInfo('125297!A:B')
+    # feishu_sheet_api.AddDataValidation('4uqqJy', '4uqqJy!J1:J30', [category.value for category in ExpenseCategory])
+    line_title = feishu_sheet_api.UpdateMonthSheetInfo('qzQYh1', '账单明细 202311', 200)
+    print(line_title)

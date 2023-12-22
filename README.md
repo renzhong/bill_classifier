@@ -24,7 +24,7 @@
 2. 在 main.py 中修改账单的路径
 3. 获取在线文档模板
     1. 在线文档模板: https://vgk5e2s4w1.feishu.cn/sheets/shtcnn77JLFDh0ZEcesIMYTb8Nf
-    2. 点击右上角: '使用该模板'，在自己的账户中新建文档  
+    2. 点击右上角: '使用该模板'，在自己的账户中新建文档
 4. 在 main.py 中填入调用 openapi 需要的信息
     - user_access_token: 点击链接: https://open.feishu.cn/api-explorer/cli_a4d9e0b5c9bd100b
     - sheet_token: 文档链接中的类似 'shtcnn77JLFDh0ZEcesIMYTb8Nf' 字符串
@@ -70,5 +70,5 @@
 4. python3 bill_classifier/main.py --config_file=config/config.ini
 
 # 近期 TODO
-- 修改 gpt 模型
 - 增加前端 UI
+- gpt 使用英文替换中文

@@ -26,11 +26,11 @@ class GPTClassifier:
     client = None
 
 
-    def __init__(self, class_list = ""):
+    def __init__(self, api_key, class_list = ""):
         if len(class_list) > 0:
             self.class_list = class_list
         self.token_count = 0
-        self.client = OpenAI()
+        self.client = OpenAI(api_key=api_key)
 
     def call(self, item_name, payee):
         system_content = self.system_template.format(self.class_list)
