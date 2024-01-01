@@ -68,6 +68,7 @@
 2. source venv/bin/activate
 3. pip install -r requirements.txt
 4. python3 bill_classifier/main.py --config_file=config/config.ini
+5. deactivate
 
 # 近期 TODO
 - 增加前端 UI
