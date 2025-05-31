@@ -26,7 +26,7 @@ def GetMonth():
     if now.day >= 20:  # 如果今天是每个月的最后10天
         month_str = now.strftime('%Y%m')  # 输出当前年月字符串，格式为YYYYMM
     else:  # 如果今天是每个月的前20天
-        last_month = now - datetime.timedelta(days=30)  # 计算上个月的日期时间
+        last_month = now - datetime.timedelta(days=21)  # 计算上个月的日期时间
         month_str = last_month.strftime('%Y%m')  # 输出上个月的年月字符串，格式为YYYYMM
 
     return month_str
@@ -37,6 +37,6 @@ def GetMonthInt():
     if now.day >= 20:
         return month_int
     else:
-        last_month = now - datetime.timedelta(days=30)  # 计算上个月的日期时间
+        last_month = now - datetime.timedelta(days=21)  # 计算上个月的日期时间
         month_int = last_month.month
         return month_int
