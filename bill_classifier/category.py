@@ -19,8 +19,9 @@ class ExpenseCategory(Enum):
     MEDICAL = '医疗'  # 医疗
     LARGE_ITEM = '大件'  # 大件
     VEHICLE_MAINTENANCE = '养车'  # 养车
+    CHILD = "育儿"  # 育儿
     SKIP = 'skip'  # skip
-    REFUND = 'refund'  # 退款
+    REFUND = '退款'  # 退款
     INCOME = "收入"  # 收入
 
     def to_str(self) -> str:

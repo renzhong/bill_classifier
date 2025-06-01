@@ -244,7 +244,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
         if item.payee == '京东' and re.search(pattern, item.item_name):
             continue
 
-        text = classifier.call(item.item_name, item.payee)
+        text = classifier.call(item.item_name, item.payee, item.amount, item.bill_time)
         logging.info("gpt classifier:{} {} -> {}".format(item.item_name, item.payee, text))
         if len(text) == 0:
             continue

@@ -378,7 +378,7 @@ class FeishuSheetAPI:
 
         for category in ExpenseCategory:
             if category.value not in line_title:
-                logging.error("月度表中确实分类项:{}".format(category.value))
+                logging.error("月度表中缺失分类项:{}".format(category.value))
 
         self.UpdateMonthSheetFormatter(month_sheet_id, column, line_title)
         self.UpdateMonthSheetData(month_sheet_id, detail_sheet_name, column, row_size, line_title)
@@ -412,13 +412,56 @@ class FeishuSheetAPI:
 
         return True, value_map
 
+    def GetClassificationTestData(self, value_range):
+        url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values/{}".format(self.sheet_token, value_range)
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
+
+        params = {
+            "valueRenderOption": "ToString"
+        }
+
+        response = requests.get(url, params=params, headers=headers)
+        rsp = json.loads(response.text)
+
+        if rsp['code'] != 0:
+            logging.error("GetClassificationTestData error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            return False, []
+
+        values = rsp['data']['valueRange']['values']
+        test_data_list = []
+        print("line:{}".format(len(values)))
+        for value in values:
+            # 检查 value 是否是数组，是否有 8 个元素
+            if len(value) != 8:
+                logging.error("GetClassificationTestData error value:{}".format(value))
+                continue
+            test_data = {
+                "amount": value[0],
+                "category": value[1],
+                "payee": value[2],
+                "item_name": value[3],
+                "bill_type": value[4],
+                "bill_time": value[5],
+                "bill_source": value[6],
+                "owner": value[7],
+            }
+            test_data_list.append(test_data)
+
+        return True, test_data_list
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    user_access_token = "u-dRYZEP8TV8IEULrbK0a1Zc01gzeN4kXFqgw015K026v2"
-    sheet_token = "VlGDs4wWJhIWDstJa04cvY5Pn3e"
+    user_access_token = "u-eBcLOqIKJflbkFLUvmBtdR013mVl5g2NWq00ggW009ve"
+    sheet_token = "OxRdst6mhhclLGtOYTncmRenncb"
     feishu_sheet_api = FeishuSheetAPI(user_access_token, sheet_token)
     # feishu_sheet_api.AddDataValidation('4uqqJy', '4uqqJy!J1:J30', [category.value for category in ExpenseCategory])
-    line_title = feishu_sheet_api.UpdateMonthSheetInfo('qzQYh1', '账单明细 202311', 200)
-    print(line_title)
+    # line_title = feishu_sheet_api.UpdateMonthSheetInfo('qzQYh1', '账单明细 202311', 200)
+    # print(line_title)
+
+    # test_data_list = feishu_sheet_api.GetClassificationTestData('ad3acc!A1:A100')
+    test_data_list = feishu_sheet_api.GetClassificationTestData('ad3acc')
+    print(test_data_list)
