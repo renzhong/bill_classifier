@@ -70,6 +70,15 @@
 4. python3 bill_classifier/main.py --config_file=config/config.ini
 5. deactivate
 
+# 模型升级
+
+| 模型 | prompt | 数据集 | 正确率 |
+|------|---------|--------|--------|
+| gpt-3.5-turbo-1106 | 基础分类提示词 | 149条账单数据 | 82.55% |
+| gpt-3.5-turbo-1106 | prompt2.0 | 149条账单数据 | 81.% |
+| gpt-4.1-nano-2025-04-14 | prompt3.0 | 136条账单数据 | 75% |
+|gpt-4o-mini-2024-07-18|prompt3.0|136条账单数据| 71.31%|
+|gpt-4-turbo-2024-04-09|prompt3.0|132条账单数据|87.12%|
+|gpt-4-turbo-2024-04-09|prompt4.0|132条账单数据|90.12%|
+
 # 近期 TODO
-- 增加前端 UI
-- gpt 使用英文替换中文
