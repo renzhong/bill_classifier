@@ -4,7 +4,6 @@
 from enum import Enum
 
 class ExpenseCategory(Enum):
-    UNKNOWN = 'unknown'
     WATER_ELECTRICITY_PROPERTY = '水电物业'  # 水电物业
     CATERING = '餐饮'  # 餐饮
     BUY_VEGETABLES = '买菜'  # 买菜
@@ -17,12 +16,19 @@ class ExpenseCategory(Enum):
     COMPANY = '公司'  # 公司
     HOME_CONSTRUCTION = '家庭建设'  # 家庭建设
     MEDICAL = '医疗'  # 医疗
-    LARGE_ITEM = '大件'  # 大件
     VEHICLE_MAINTENANCE = '养车'  # 养车
     CHILD = "育儿"  # 育儿
+    UNKNOWN = 'unknown'
     SKIP = 'skip'  # skip
     REFUND = '退款'  # 退款
     INCOME = "收入"  # 收入
+
+    def to_str(self) -> str:
+        return self.value
+
+class ExtraPayCategory(Enum):
+    DAILY = '日常开支'
+    EXTRA = '额外开支'
 
     def to_str(self) -> str:
         return self.value

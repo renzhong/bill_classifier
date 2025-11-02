@@ -1,5 +1,6 @@
 import logging
 import re
+import datetime
 
 from feishu import FeishuSheetAPI
 from bill_item import BillType, BillItem, ClassifyAlg
@@ -66,6 +67,102 @@ def merge_refund_items(bill_item_list: List[BillItem]) -> List[BillItem]:
 
     return merged_items
 
+
+merge_payee_info = [
+    {
+        "pattern":"^余额宝.*收益发放$",
+        "col": "item_name",
+        "type": "regex"
+    },
+    {
+        "target": "北京轨道交通路网管理有限公司",
+        "col": "payee",
+        "type": "match"
+    },
+    {
+        "target": "北京金辉大厦烘焙店",
+        "col": "payee",
+        "type": "match"
+    },
+    {
+        "pattern": "^高德地图总部-美餐餐厅.*$",
+        "col": "payee",
+        "type": "regex"
+    },
+    {
+        "pattern": "^.*李邵男$",
+        "col": "payee",
+        "type": "regex"
+    }
+]
+
+def merge_items_strategy(bill_item_list: List[BillItem], merge_config: List[dict], group_by: str = "owner") -> List[BillItem]:
+    """
+    通用的账单项合并函数
+
+    Args:
+        bill_item_list: 账单列表
+        merge_config: 合并配置列表，每个配置项包含：
+            - "type": "regex" 或 "match"
+            - "col": 要匹配的字段名（如 "item_name", "payee"）
+            - "pattern": 正则表达式（type为"regex"时使用）
+            - "target": 匹配目标值（type为"match"时使用）
+        group_by: 分组字段名，默认为 "owner"
+
+    Returns:
+        合并后的账单列表
+    """
+    for config in merge_config:
+        col = config.get("col")
+        match_type = config.get("type")
+        if match_type == "regex":
+            pattern = config.get("pattern")
+        elif match_type == "match":
+            target = config.get("target")
+        else:
+            continue
+
+        group_items = {}
+        last_items = []
+        for item in bill_item_list:
+            if item.category != ExpenseCategory.UNKNOWN:
+                last_items.append(item)
+                continue
+
+            if match_type == "regex":
+                if re.match(pattern, getattr(item, col)):
+                    if item.owner in group_items:
+                        group_items[item.owner].append(item)
+                    else:
+                        group_items[item.owner] = [item]
+                else:
+                    last_items.append(item)
+            elif match_type == "match":
+                if getattr(item, col) == target:
+                    if item.owner in group_items:
+                        group_items[item.owner].append(item)
+                    else:
+                        group_items[item.owner] = [item]
+                else:
+                    last_items.append(item)
+            else:
+                last_items.append(item)
+
+        for owner, items in group_items.items():
+            if len(items) == 0:
+                continue
+            merged_item = items[0]
+            total_amount = merged_item.amount
+            for item in items[1:]:
+                total_amount += item.amount
+            merged_item.amount = total_amount
+            logging.info(f"{owner} merge items {merged_item.payee}:{merged_item.item_name} for {len(items)}")
+            last_items.append(merged_item)
+
+        bill_item_list = last_items
+
+    return bill_item_list
+
 def merge_balance_items(bill_item_list: List[BillItem]) -> List[BillItem]:
     regex_pattern = r'^余额宝.*收益发放$'
 
@@ -83,8 +180,6 @@ def merge_balance_items(bill_item_list: List[BillItem]) -> List[BillItem]:
             last_items.append(item)
 
     for owner, items in balance_items.items():
-        logging.debug("{} has {} balance item".format(owner, len(items)))
-
         if len(items) == 0:
             continue
         merge_item = items[0]
@@ -92,7 +187,7 @@ def merge_balance_items(bill_item_list: List[BillItem]) -> List[BillItem]:
         for item in items[1:]:
             amount = amount + item.amount
         merge_item.amount = amount
-        logging.debug("{} balance item:{}".format(owner, merge_item))
+        logging.info("{} balance item:{}".format(owner, merge_item))
         last_items.append(merge_item)
 
     return last_items
@@ -171,6 +266,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
                 item_reg_match = True
                 mark_count += 1
                 break
+
         if item_reg_match:
             continue
 
@@ -182,6 +278,7 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
                 payee_reg_match = True
                 mark_count += 1
                 break
+
         if payee_reg_match:
             continue
 
@@ -189,6 +286,21 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
     logging.debug("计算 category 前已标记过 category 的 item size:{}".format(marked_item_count))
     logging.debug("计算 category 时标记为 skip 的 item size:{}".format(mark_skip_count))
     logging.debug("计算 category 时标记为有效值的 item size:{}".format(mark_count))
+
+    skip_items = [
+        "余额宝-自动转入",
+        "转账备注:微信转账"
+    ]
+
+    extra_skip_count = 0
+    for item in items:
+        if item.category != ExpenseCategory.UNKNOWN:
+            continue
+        if item.item_name in skip_items:
+            item.category = ExpenseCategory.SKIP
+            extra_skip_count += 1
+            continue
+    logging.info("extra skip item size:{}".format(extra_skip_count))
 
     mark_count = 0
     # 策略 2
@@ -264,17 +376,38 @@ def categorize_items(items: List[BillItem], bill_config: BillConfig) -> List[Bil
 
 def bill_strategy(bill_item_list, bill_config):
     # 分析数据
-    #   1. 合并退款
-    bill_item_list = merge_refund_items(bill_item_list)
-    logging.info("after merge refund bill item:{}".format(len(bill_item_list)))
+    # 如果 payee 正则匹配"高德地图总部-美餐餐厅"，且时间为工作日下午6点到7点，把category 标记为 skip
+    payee_pattern = r'^高德地图总部-美餐餐厅.*$'
+    mark_skip_count = 0
+    for item in bill_item_list:
+        # 检查payee是否匹配正则表达式
+        if not re.match(payee_pattern, item.payee):
+            continue
 
-    #   2. 合并余额宝收益
-    bill_item_list = merge_balance_items(bill_item_list)
-    logging.info("after balance bill item:{}".format(len(bill_item_list)))
+        # 检查是否为工作日且时间在18:00-19:00之间
+        dt = datetime.datetime.fromtimestamp(item.bill_time)
+        # weekday()返回0-6，0是周一，6是周日，所以工作日是<5
+        is_weekday = dt.weekday() < 5
+        # 下午6点到7点：18:00 <= time < 19:00 or 晚上9点到10点：21:00 <= time < 22:00
+        is_work_hour = dt.hour == 18 or dt.hour == 21
 
+        if is_weekday and is_work_hour:
+            item.category = ExpenseCategory.SKIP
+            mark_skip_count += 1
+
+    logging.info("美餐餐厅工作日18点标记为skip的item数量:{}".format(mark_skip_count))
+
+    # 合并策略
+    bill_item_list = merge_items_strategy(bill_item_list, merge_payee_info)
+    logging.info("after merge payee bill item:{}".format(len(bill_item_list)))
     bill_item_list = sorted(bill_item_list, key=lambda item: item.bill_time)
 
-    #   2. 划分到某个大类
+    # 合并退款
+    bill_item_list = merge_refund_items(bill_item_list)
+    logging.info("after merge refund bill item:{}".format(len(bill_item_list)))
+    bill_item_list = sorted(bill_item_list, key=lambda item: item.bill_time)
+
+    # 划分到某个大类
     ret = categorize_items(bill_item_list, bill_config)
     logging.info("after categorize bill item:{}".format(len(bill_item_list)))
 

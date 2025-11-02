@@ -9,7 +9,7 @@ import configparser
 import argparse
 import openai
 
-from feishu import FeishuSheetAPI, FeishuUnit
+from feishu import FeishuSheetAPI
 from category import ExpenseCategory
 from bill_item import BillType, ClassifyAlg
 from bill import AliPayBill, WeChatBill
@@ -17,6 +17,8 @@ from bill_config import BillConfig
 from bill_file import BillFile
 from strategy import bill_strategy
 from util import GetMonth
+from detail_sheet import DetailSheet
+from summary_sheet import SummarySheet
 
 logger = logging.getLogger(__name__)
 
@@ -27,65 +29,48 @@ def record_to_feishu(feishu_config, bill_item_dict):
     feishu_sheet_api = FeishuSheetAPI(user_access_token, bill_sheet_token)
     sheet_info = feishu_sheet_api.GetSheetInfo()
 
+    # 创建或获取消费明细页面
     month_str = GetMonth()
     sheet_name = "账单明细 " + month_str
 
     sheet_id = ''
     if sheet_name not in sheet_info:
-        ret,sheet_id = feishu_sheet_api.AddNewSheet(sheet_name, len(sheet_info))
+        ret, sheet_id = feishu_sheet_api.AddNewSheet(sheet_name, len(sheet_info))
         if not ret:
             return False
     else:
         sheet_id = sheet_info[sheet_name]['sheet_id']
 
+    # 初始化页面类
+    detail_sheet = DetailSheet(bill_sheet_token, sheet_id, user_access_token, sheet_name)
+    summary_sheet = SummarySheet(bill_sheet_token, sheet_id, user_access_token)
+    
+    # 处理支出数据
     bill_size = 0
     if "expense" in bill_item_dict:
         bill_size = len(bill_item_dict['expense'])
     logging.info("expense item 数量: {}".format(bill_size))
 
-    # TODO: 直接写数据, 由 feishu 类来动态扩展空白行或者空白列
-    start_pos = FeishuUnit('1', 'A')
+    # 构建明细页面（设置枚举值等）
+    if bill_size > 0:
+        detail_sheet.init_sheet(bill_size)
 
-    category_col_offset = 1
-    alg_col_offset = 8
-    data_col_size = 9
-    if bill_size > 200:
-        add_rows = (bill_size // 100 + 1) * 100
-        feishu_sheet_api.AddRows(sheet_id, add_rows)
+        # 填充支出数据
+        detail_sheet.fill_data(bill_item_dict['expense'])
 
-    validation_range = "{}!{}{}:{}{}".format(sheet_id,
-                                start_pos.GetCol(offset = category_col_offset), start_pos.GetRow(),
-                                start_pos.GetCol(offset = category_col_offset), start_pos.GetRow(offset = bill_size - 1))
-    logging.info("category_color_dict validation_range:{}".format(validation_range))
-    feishu_sheet_api.AddDataValidation(sheet_id, validation_range, [category.value for category in ExpenseCategory])
+    # 处理收入数据
+    # if 'income' in bill_item_dict and len(bill_item_dict['income']) > 0:
+    #     detail_sheet.fill_income_data(feishu_sheet_api, sheet_id, bill_item_dict['income'])
 
-    validation_range = "{}!{}{}:{}{}".format(sheet_id,
-                            start_pos.GetCol(offset = alg_col_offset), start_pos.GetRow(),
-                            start_pos.GetCol(offset = alg_col_offset), start_pos.GetRow(offset = bill_size - 1))
-    logging.info("alg_color_dict validation_range:{}".format(validation_range))
-    feishu_sheet_api.AddDataValidation(sheet_id, validation_range, [alg.value for alg in ClassifyAlg])
-
-    sheet_range = "{}!{}{}:{}{}".format(sheet_id,
-                            start_pos.GetCol(), start_pos.GetRow(),
-                            start_pos.GetCol(offset = data_col_size - 1),  # -1: offset 比长度小 1
-                            start_pos.GetRow(offset = bill_size - 1))
-    logging.info("bill_item sheet_range:{}".format(sheet_range))
-    feishu_sheet_api.RecordBillItem(sheet_range, bill_item_dict['expense'])
-
-    if 'income' in bill_item_dict:
-        # +2: 两块数据要间隔 1 列
-        check_pos = FeishuUnit('1', start_pos.GetCol(offset = data_col_size - 1 + 2))
-        bill_size = len(bill_item_dict['income'])
-        logging.info("check item 数量: {}".format(bill_size))
-
-        sheet_range = "{}!{}{}:{}{}".format(sheet_id,
-                                    check_pos.GetCol(), check_pos.GetRow(),
-                                    check_pos.GetCol(offset = data_col_size - 1), check_pos.GetRow(offset = bill_size - 1))
-        logging.info("check_item sheet_range:{}".format(sheet_range))
-        feishu_sheet_api.RecordBillItem(sheet_range, bill_item_dict['income'])
-
-    month_detail_sheet_id = sheet_info['月度明细']['sheet_id']
-    feishu_sheet_api.UpdateMonthSheetInfo(month_detail_sheet_id, sheet_name, len(bill_item_dict['expense']))
+    # 更新汇总页面
+    expense_size = len(bill_item_dict.get('expense', []))
+    month_detail_sheet_id = sheet_info["月度明细"]['sheet_id']
+    summary_sheet.fill_data(
+        feishu_sheet_api,
+        month_detail_sheet_id,
+        sheet_name,
+        expense_size
+    )
 
 def check_unknown_items(bill_item_list):
     count = 0
