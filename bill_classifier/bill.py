@@ -72,7 +72,10 @@ class AliPayBill(BaseBill):
             item_name = row[8]
             bill_type_name = row[10]
             order_id = row[1]
-            bill_time = str2timestamp(row[3], self.bill_time_format)
+            if len(row[3]) > 0:
+                bill_time = str2timestamp(row[3], self.bill_time_format)
+            else:
+                bill_time = str2timestamp(row[2], self.bill_time_format)
             if is_chinese_equal(bill_type_name, '收入'):
                 bill_type = BillType.INCOME
             elif is_chinese_equal(bill_type_name, '支出'):

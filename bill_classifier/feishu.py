@@ -295,6 +295,12 @@ class FeishuSheetAPI:
                         "type": "formula",
                         "text": "=SUM({}{}:{}{}) - {}{}".format(column, start_line, column, skip_line - 1, column, refund_line)
                     }])
+            elif title == '额外开支':
+                data['valueRange']['values'].append(
+                    [{
+                        "type": "formula",
+                        "text": "=SUMIF('{}'!J1:J{}, A{}, '{}'!A1:A{})".format(detail_sheet_name, row_size, line, detail_sheet_name, row_size)
+                    }])
             else:
                 data['valueRange']['values'].append(
                     [{
@@ -347,14 +353,18 @@ class FeishuSheetAPI:
 
         return titles
 
-    def UpdateMonthSheetFormatter(self, month_sheet_id, column, line_title):
+    def UpdateStyleInfo(self, value_range, style_info):
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/styles_batch_update".format(self.sheet_token)
 
-        start_line = 2
-        end_line = start_line + len(line_title) - 1
-        value_range = "{}!{}{}:{}{}".format(month_sheet_id, column, start_line, column, end_line)
+        data = {
+            "data": [
+                {
+                    "ranges": value_range,
+                    "style": style_info
+                }
+            ]
+        }
 
-        data_str = '{{"data":[{{"ranges": "{}", "style": {{"formatter": "#,##0"}}}}]}}'.format(value_range)
         # 设置请求头
         headers = {
             'Content-Type': 'application/json',
@@ -362,11 +372,68 @@ class FeishuSheetAPI:
         }
 
         # 发送请求并获取响应
-        response = requests.put(url, data=data_str, headers=headers)
+        response = requests.put(url, json=data, headers=headers)
 
         rsp = json.loads(response.text)
         if rsp['code'] != 0:
-            logging.error("UpdateMonthSheetFormatter error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            logging.error("UpdateStyleInfo error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            return False
+        else:
+            return True
+
+    def WriteValues(self, sheet_id, sheet_range, values):
+        """写入简单值到指定范围"""
+        url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/values".format(self.sheet_token)
+
+        data = {
+            "valueRange": {
+                "range": sheet_range,
+                "values": values
+            }
+        }
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
+
+        response = requests.put(url, json=data, headers=headers)
+        rsp = json.loads(response.text)
+
+        if rsp['code'] != 0:
+            logging.error("WriteValues error code:{} msg:{}".format(rsp['code'], rsp['msg']))
+            return False
+        else:
+            return True
+
+    def SetBackgroundColor(self, sheet_id, ranges_list, back_color):
+        """设置指定范围的背景色
+        Args:
+            sheet_id: sheet id
+            ranges_list: 范围列表，例如 ["sheetId!A1:B1", "sheetId!A2:B2"]
+            back_color: 背景色，例如 "#FFFFFF" 或 "#D5F6F2"
+        """
+        url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/styles_batch_update".format(self.sheet_token)
+
+        data = {
+            "data": [{
+                "ranges": ranges_list,
+                "style": {
+                    "backColor": back_color
+                }
+            }]
+        }
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + self.user_access_token
+        }
+
+        response = requests.put(url, json=data, headers=headers)
+        rsp = json.loads(response.text)
+
+        if rsp['code'] != 0:
+            logging.error("SetBackgroundColor error code:{} msg:{}".format(rsp['code'], rsp['msg']))
             return False
         else:
             return True
@@ -380,7 +447,6 @@ class FeishuSheetAPI:
             if category.value not in line_title:
                 logging.error("月度表中缺失分类项:{}".format(category.value))
 
-        self.UpdateMonthSheetFormatter(month_sheet_id, column, line_title)
         self.UpdateMonthSheetData(month_sheet_id, detail_sheet_name, column, row_size, line_title)
 
     def GetCategoryClassificationInfo(self, value_range):
