@@ -7,7 +7,6 @@ import datetime
 import sys
 import configparser
 import argparse
-import openai
 
 from feishu import FeishuSheetAPI
 from feishu_auth import FeishuAuthError, get_valid_user_access_token
@@ -120,8 +119,6 @@ if __name__ == "__main__":
     except FeishuAuthError as err:
         logging.error(str(err))
         sys.exit(1)
-
-    openai.api_key = bill_config.gpt_config.api_key
 
     bill_files = load_bill_file(config)
     logging.debug("bill_files:{}".format(len(bill_files)))
