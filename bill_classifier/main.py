@@ -10,6 +10,7 @@ import argparse
 import openai
 
 from feishu import FeishuSheetAPI
+from feishu_auth import FeishuAuthError, get_valid_user_access_token
 from category import ExpenseCategory
 from bill_item import BillType, ClassifyAlg
 from bill import AliPayBill, WeChatBill
@@ -114,6 +115,11 @@ if __name__ == "__main__":
     config.read(args.config_file)
 
     bill_config = BillConfig(config)
+    try:
+        bill_config.feishu_config.user_access_token = get_valid_user_access_token(config, args.config_file)
+    except FeishuAuthError as err:
+        logging.error(str(err))
+        sys.exit(1)
 
     openai.api_key = bill_config.gpt_config.api_key
 

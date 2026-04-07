@@ -3,6 +3,7 @@ import configparser
 import argparse
 
 from feishu import FeishuSheetAPI
+from feishu_auth import FeishuAuthError, get_valid_user_access_token
 from classifier_gpt import GPTClassifier
 
 class ClassifierEvaluator:
@@ -58,7 +59,11 @@ def main():
     config.read(args.config_file)
 
     api_key = config.get('gpt', 'api_key')
-    user_access_token = config.get('feishu', 'user_access_token')
+    try:
+        user_access_token = get_valid_user_access_token(config, args.config_file)
+    except FeishuAuthError as err:
+        logging.error(str(err))
+        return
     sheet_token = 'OxRdst6mhhclLGtOYTncmRenncb'
 
     if not all([user_access_token, sheet_token, api_key]):

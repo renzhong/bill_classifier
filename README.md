@@ -25,9 +25,14 @@
 3. 获取在线文档模板
     1. 在线文档模板: https://vgk5e2s4w1.feishu.cn/sheets/shtcnn77JLFDh0ZEcesIMYTb8Nf
     2. 点击右上角: '使用该模板'，在自己的账户中新建文档
-4. 在 main.py 中填入调用 openapi 需要的信息
-    - user_access_token: 点击链接: https://open.feishu.cn/api-explorer/cli_a4d9e0b5c9bd100b
-    - sheet_token: 文档链接中的类似 'shtcnn77JLFDh0ZEcesIMYTb8Nf' 字符串
+4. 在 `config/config.ini` 中填入调用 openapi 需要的信息
+    - `app_id` / `app_secret`: 你自己的飞书开放平台应用
+    - `bill_sheet_token`: 文档链接中的类似 `shtcnn77JLFDh0ZEcesIMYTb8Nf` 字符串
+    - `category_sheet_token`: 分类表的 sheet token
+5. 执行登录脚本获取并写入 `user_access_token`
+    - `python3 feishu_login.py --config_file=config/config.ini`
+    - 登录成功后会自动把 `user_access_token`、`refresh_token` 和过期时间写回配置文件
+    - 如果你只想临时放到当前 shell 环境变量中，可执行 `python3 feishu_login.py --config_file=config/config.ini --print-shell --no-write-config`
 
 # 最终文档格式
 ## 账单明细 YYYYMM
@@ -67,8 +72,9 @@
 1. python3 -m venv venv
 2. source venv/bin/activate
 3. pip install -r requirements.txt
-4. python3 bill_classifier/main.py --config_file=config/config.ini
-5. deactivate
+4. python3 feishu_login.py --config_file=config/config.ini
+5. python3 bill_classifier/main.py --config_file=config/config.ini
+6. deactivate
 
 # 模型升级
 
