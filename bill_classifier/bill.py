@@ -130,7 +130,7 @@ class WeChatBill(BaseBill):
         bill_rows = self.get_bill_rows()
 
         for row in bill_rows:
-            amount = float(row[5].lstrip(chr(165)))  # 去除 '¥' 符号
+            amount = float(row[5].lstrip(chr(165)).replace(',', ''))  # 去除 '¥' 符号和千分位分隔符
             payee = row[2]
             item_name = row[3]
             bill_type_name = row[4]
