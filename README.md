@@ -76,6 +76,37 @@
 5. python3 bill_classifier/main.py --config_file=config/config.ini
 6. deactivate
 
+# 密钥扫描（detect-secrets）
+
+为了避免误把 `user_access_token` / `api_key` 等敏感信息提交进仓库，仓库使用 `detect-secrets` 配合 `pre-commit` 在每次 commit 前自动扫描。
+
+## 首次设置（每个克隆仓库的环境只需一次）
+
+```bash
+pip install -r requirements.txt           # 已包含 detect-secrets / pre-commit
+detect-secrets scan > .secrets.baseline   # 生成基线（仓库已有基线时可跳过）
+pre-commit install                         # 注册 git hook
+```
+
+`.secrets.baseline` 应当随仓库一起提交，它记录了已知的"误报"，新提交只对增量部分扫描。
+
+## 日常使用
+
+正常 `git commit` 即可，hook 会自动跑。如果命中疑似密钥：
+
+- **真泄露**：把硬编码的真值清掉，改成读 `config/config.ini` 或环境变量。
+- **误报**：在该行末尾加 `# pragma: allowlist secret` 注释；或者重新生成基线 `detect-secrets scan --baseline .secrets.baseline`，再 `git add .secrets.baseline` 一并提交。
+
+## 手动操作
+
+```bash
+# 全量扫描并刷新基线
+detect-secrets scan --baseline .secrets.baseline
+
+# 交互式审计基线里每一条命中是真是假
+detect-secrets audit .secrets.baseline
+```
+
 # 模型升级
 
 | 模型 | prompt | 数据集 | 正确率 |

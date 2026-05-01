@@ -1,3 +1,7 @@
 chardet
 openai
 requests
+
+# 开发工具：commit 前扫描密钥
+detect-secrets
+pre-commit
