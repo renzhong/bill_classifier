@@ -5,11 +5,13 @@ import argparse
 from feishu import FeishuSheetAPI
 from feishu_auth import FeishuAuthError, get_valid_user_access_token
 from classifier_gpt import GPTClassifier
+from bill_config import BillConfig, ModelConfig
+
 
 class ClassifierEvaluator:
-    def __init__(self, user_access_token, sheet_token, api_key):
+    def __init__(self, user_access_token, sheet_token, model_config: ModelConfig):
         self.feishu_api = FeishuSheetAPI(user_access_token, sheet_token)
-        self.classifier = GPTClassifier(api_key)
+        self.classifier = GPTClassifier(model_config)
         self.correct_count = 0
         self.error_count = 0
         self.error_items = []
@@ -48,8 +50,8 @@ class ClassifierEvaluator:
 
         return self.correct_count, self.error_count, accuracy, self.error_items
 
+
 def main():
-    # 配置日志
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
@@ -58,7 +60,9 @@ def main():
     config = configparser.ConfigParser()
     config.read(args.config_file)
 
-    api_key = config.get('gpt', 'api_key')
+    bill_config = BillConfig(config)
+    model_config = bill_config.gpt_config.current_model
+
     try:
         user_access_token = get_valid_user_access_token(config, args.config_file)
     except FeishuAuthError as err:
@@ -66,18 +70,16 @@ def main():
         return
     sheet_token = 'OxRdst6mhhclLGtOYTncmRenncb'
 
-    if not all([user_access_token, sheet_token, api_key]):
-        logging.error("请确保环境变量中设置了 FEISHU_USER_ACCESS_TOKEN, FEISHU_SHEET_TOKEN 和 OPENAI_API_KEY")
+    if not user_access_token:
+        logging.error("缺少飞书 user_access_token")
         return
 
-    # 创建评测器
-    evaluator = ClassifierEvaluator(user_access_token, sheet_token, api_key)
+    evaluator = ClassifierEvaluator(user_access_token, sheet_token, model_config)
 
-    # 执行评测
     correct, error, accuracy, error_items = evaluator.evaluate('ad3acc')
 
-    # 打印结果
     print("\n评测结果:")
+    print(f"使用模型: {model_config.name} ({model_config.model_name} @ {model_config.base_url})")
     print(f"正确数: {correct}")
     print(f"错误数: {error}")
     print(f"正确率: {accuracy:.2%}")
@@ -88,6 +90,7 @@ def main():
         print(f"实际分类: {item['actual_category']}")
         print(f"预测分类: {item['predicted_category']}")
         print("-" * 50)
+
 
 if __name__ == "__main__":
     main()

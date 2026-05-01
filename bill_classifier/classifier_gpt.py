@@ -1,7 +1,8 @@
-import os
 from openai import OpenAI
-import logging
 import json
+
+from bill_config import ModelConfig
+
 
 class GPTClassifier:
     # 系统提示词：定义角色、任务和输出格式
@@ -47,15 +48,16 @@ class GPTClassifier:
         "medical": "医疗",
         "unknown": "unknown"
     }
-    token_count = 0
-    client = None
 
-
-    def __init__(self, api_key, class_list = ""):
+    def __init__(self, model_config: ModelConfig, class_list: str = ""):
         if len(class_list) > 0:
             self.class_list = class_list
         self.token_count = 0
-        self.client = OpenAI(api_key=api_key)
+        self.model_config = model_config
+        self.client = OpenAI(
+            api_key=model_config.api_key,
+            base_url=model_config.base_url,
+        )
 
     def call(self, item_name, payee, amount, timestamp):
         system_content = self.system_template.format(self.class_list)
@@ -67,15 +69,14 @@ class GPTClassifier:
         )
 
         response = self.client.chat.completions.create(
-            # model="gpt-3.5-turbo-0125",
-            model="gpt-4-turbo-2024-04-09",
-            response_format={ "type": "json_object" },
-            messages = [
+            model=self.model_config.model_name,
+            response_format={"type": "json_object"},
+            messages=[
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": user_content}
             ]
         )
-        
+
         self.token_count += response.usage.total_tokens
         content = json.loads(response.choices[0].message.content)
         return content["category"]
@@ -83,9 +84,17 @@ class GPTClassifier:
     def get_token_count(self):
         return self.token_count
 
+
 if __name__ == '__main__':
     from category import expense_category_mapping  # noqa: F403
-    classifier = GPTClassifier()
+
+    demo_model = ModelConfig(
+        name="gemini",
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        model_name="gemini-2.5-flash-lite",
+        api_key="AIzaSyDAyKJnswN-wisIovU48IiBYmLbV65y6V0",
+    )
+    classifier = GPTClassifier(demo_model)
 
     text = classifier.call("7-ELEVEn北京黄寺大街西侧店消费", "7-11(SEB)", 35, "2024-03-20 14:30")
     print(text)
