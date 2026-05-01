@@ -51,6 +51,15 @@ class GPTConfig:
         self.active_model = ""
         self.models = {}
 
+
+class StrategyConfig:
+    """pipeline 行为配置，目前只支持禁用某些 step。"""
+
+    disabled_steps: list
+
+    def __init__(self):
+        self.disabled_steps = []
+
     @property
     def current_model(self) -> ModelConfig:
         if self.active_model not in self.models:
@@ -68,6 +77,7 @@ _MODEL_SECTION_PREFIX = "model."
 class BillConfig:
     feishu_config: FeishuConfig
     gpt_config: GPTConfig
+    strategy_config: StrategyConfig
 
     def __init__(self, config):
         self.feishu_config = FeishuConfig()
@@ -106,3 +116,10 @@ class BillConfig:
                 f"[gpt].active_model={self.gpt_config.active_model!r} 未对应任何 "
                 f"[model.*] section，已加载: {list(self.gpt_config.models.keys())}"
             )
+
+        self.strategy_config = StrategyConfig()
+        raw_disabled = config.get('strategy', 'disabled_steps', fallback='').strip()
+        if raw_disabled:
+            self.strategy_config.disabled_steps = [
+                s.strip() for s in raw_disabled.split(',') if s.strip()
+            ]

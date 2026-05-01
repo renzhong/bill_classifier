@@ -1,3 +1,8 @@
 start.sh
 config/zc.ini
 .env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
