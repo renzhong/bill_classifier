@@ -138,13 +138,23 @@ class SummarySheet:
         return chr(ord('A') + GetMonthInt())
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    # 注意：实际使用时需要传入真实的 sheet_id 和 feishu_api
-    doc_id = "SOl6wAbL9iLFE0kvPgJcD3aHndg"
-    sheet_id = "NPJSfF"
-    user_token = "u-f0vmJQGFl6ErGYeo9.xK0d4g4apM40gVNo0001CG2bM8"
+    import argparse
+    import configparser
+    from feishu_auth import get_valid_user_access_token
 
-    summary_sheet = SummarySheet(doc_id, sheet_id, user_token)
+    logging.basicConfig(level=logging.DEBUG)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config_file', default='config/config.ini')
+    parser.add_argument('--doc_id', default='SOl6wAbL9iLFE0kvPgJcD3aHndg')
+    parser.add_argument('--sheet_id', default='NPJSfF')
+    args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+    config.read(args.config_file)
+    user_token = get_valid_user_access_token(config, args.config_file)
+
+    summary_sheet = SummarySheet(args.doc_id, args.sheet_id, user_token)
     summary_sheet.init_sheet()
     # summary_sheet.init_sheet()
     print("SummarySheet 类已创建，需要在 main.py 中使用")

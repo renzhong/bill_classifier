@@ -86,15 +86,21 @@ class GPTClassifier:
 
 
 if __name__ == '__main__':
+    import argparse
+    import configparser
+
+    from bill_config import BillConfig
     from category import expense_category_mapping  # noqa: F403
 
-    demo_model = ModelConfig(
-        name="gemini",
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-        model_name="gemini-2.5-flash-lite",
-        api_key="AIzaSyDAyKJnswN-wisIovU48IiBYmLbV65y6V0",
-    )
-    classifier = GPTClassifier(demo_model)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config_file', default='config/config.ini')
+    args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+    config.read(args.config_file)
+    bill_config = BillConfig(config)
+
+    classifier = GPTClassifier(bill_config.gpt_config.current_model)
 
     text = classifier.call("7-ELEVEn北京黄寺大街西侧店消费", "7-11(SEB)", 35, "2024-03-20 14:30")
     print(text)

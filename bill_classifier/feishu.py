@@ -519,11 +519,22 @@ class FeishuSheetAPI:
         return True, test_data_list
 
 if __name__ == "__main__":
+    import argparse
+    import configparser
+    from feishu_auth import get_valid_user_access_token
+
     logging.basicConfig(level=logging.DEBUG)
 
-    user_access_token = "u-eBcLOqIKJflbkFLUvmBtdR013mVl5g2NWq00ggW009ve"
-    sheet_token = "OxRdst6mhhclLGtOYTncmRenncb"
-    feishu_sheet_api = FeishuSheetAPI(user_access_token, sheet_token)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config_file', default='config/config.ini')
+    parser.add_argument('--sheet_token', default='OxRdst6mhhclLGtOYTncmRenncb')
+    args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+    config.read(args.config_file)
+    user_access_token = get_valid_user_access_token(config, args.config_file)
+
+    feishu_sheet_api = FeishuSheetAPI(user_access_token, args.sheet_token)
     # feishu_sheet_api.AddDataValidation('4uqqJy', '4uqqJy!J1:J30', [category.value for category in ExpenseCategory])
     # line_title = feishu_sheet_api.UpdateMonthSheetInfo('qzQYh1', '账单明细 202311', 200)
     # print(line_title)
