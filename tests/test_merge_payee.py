@@ -1,4 +1,4 @@
-from category import ExpenseCategory, Lifecycle
+from category import Lifecycle
 from classifiers.merge_payee import MergePayee
 
 from helpers import make_context, make_item

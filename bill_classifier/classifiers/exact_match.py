@@ -24,8 +24,8 @@
 import logging
 from typing import List
 
-from bill_item import BillItem, BillType, ClassifyAlg
-from category import Lifecycle, SkipReason
+from bill_item import BillItem
+from category import BillType, ClassifyAlg, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)

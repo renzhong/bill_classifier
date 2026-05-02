@@ -20,8 +20,8 @@ lifecycle != UNPROCESSED 会自动跳过，不会误覆盖。
 import logging
 from typing import List
 
-from bill_item import BillItem, BillType
-from category import Lifecycle, SkipReason
+from bill_item import BillItem
+from category import BillType, ClassifyAlg, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,8 @@ class NonExpenseSkip(Step):
                 continue
             item.lifecycle = Lifecycle.SKIPPED
             item.skip_reason = SkipReason.NON_EXPENSE
+            if item.bill_type == BillType.INCOME:
+                item.classify_alg = ClassifyAlg.MATCH
             count += 1
         logger.info("non_expense_skip 标记数:%d", count)
         return items

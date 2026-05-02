@@ -1,5 +1,4 @@
-from bill_item import BillType
-from category import ExpenseCategory, Lifecycle, SkipReason
+from category import BillType, ExpenseCategory, Lifecycle, SkipReason
 from classifiers.non_expense_skip import NonExpenseSkip
 
 from helpers import make_context, make_item

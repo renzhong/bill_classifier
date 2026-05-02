@@ -78,18 +78,18 @@ def main():
 
     correct, error, accuracy, error_items = evaluator.evaluate('ad3acc')
 
-    print("\n评测结果:")
-    print(f"使用模型: {model_config.name} ({model_config.model_name} @ {model_config.base_url})")
-    print(f"正确数: {correct}")
-    print(f"错误数: {error}")
-    print(f"正确率: {accuracy:.2%}")
-    print("\n分类错误的数据:")
+    logging.info("\n评测结果:")
+    logging.info("使用模型: %s (%s @ %s)", model_config.name, model_config.model_name, model_config.base_url)
+    logging.info("正确数: %d", correct)
+    logging.info("错误数: %d", error)
+    logging.info("正确率: %.2f%%", accuracy * 100)
+    logging.info("\n分类错误的数据:")
     for item in error_items:
-        print(f"商品: {item['item_name']}")
-        print(f"商家: {item['payee']}")
-        print(f"实际分类: {item['actual_category']}")
-        print(f"预测分类: {item['predicted_category']}")
-        print("-" * 50)
+        logging.info("商品: %s", item['item_name'])
+        logging.info("商家: %s", item['payee'])
+        logging.info("实际分类: %s", item['actual_category'])
+        logging.info("预测分类: %s", item['predicted_category'])
+        logging.info("-" * 50)
 
 
 if __name__ == "__main__":

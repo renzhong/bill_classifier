@@ -3,12 +3,42 @@
 
 from enum import Enum
 
-class ExpenseCategory(Enum):
-    """业务分类（仅业务含义，不含状态值）。
 
-    "未分类 / 跳过 / 退款 / 收入"等状态语义由 Lifecycle 表达；
-    展示层通过 BillItem.category_display() 派生表格字符串。
+class BillType(Enum):
+    INCOME = "收入"
+    EXPENSE = "支出"
+    OTHER = "不计支出"
+
+    def to_str(self) -> str:
+        return self.value
+
+
+class ClassifyAlg(Enum):
+    MATCH = "完全匹配"
+    REGULAR = "模糊匹配"
+    WET_MARKET = "菜场模式"
+    GPT = "GPT模式"
+    FOLLOW = "跟随账单"           # neighbor_inference 命中时打的标
+    MERGED = "已合并"              # merge_refund / taobao_balance_merge 合并产生且金额 > 0；
+                                   #   是中间态，会被后续分类 step（MATCH/REGULAR/GPT）覆盖
+    FULL_REFUND = "完全退款"       # 合并后金额 < 0.01，lifecycle=SKIPPED 的终态
+    COMPANY_SUBSIDY = "公司补贴"   # meican_filter 识别为工作日餐补时打的标
+    UNKNOWN = "无法识别"           # 仅展示用，BillItem.classify_alg 仍以 None 表示未分类
+
+    def to_str(self) -> str:
+        return self.value
+
+
+class ExpenseCategory(Enum):
+    """业务分类 + B 列状态展示值。
+
+    14 个业务分类由分类 step 写入 BillItem.category。
+    4 个状态展示值（UNKNOWN/SKIP/REFUND/INCOME）仅用于：
+        - 飞书 B 列下拉枚举（detail_sheet 动态生成）
+        - BillItem.category_display() 按 lifecycle / bill_type 派生展示
+    不会被任何 step 写入 BillItem.category（保留 phase5 的"状态走 lifecycle"原则）。
     """
+    # 业务分类
     WATER_ELECTRICITY_PROPERTY = '水电物业'
     CATERING = '餐饮'
     BUY_VEGETABLES = '买菜'
@@ -23,9 +53,27 @@ class ExpenseCategory(Enum):
     MEDICAL = '医疗'
     VEHICLE_MAINTENANCE = '养车'
     CHILD = "育儿"
+    # 状态展示值
+    UNKNOWN = "unknown"
+    SKIP = "skip"
+    REFUND = "退款"
+    INCOME = "收入"
 
     def to_str(self) -> str:
         return self.value
+
+
+_STATE_CATEGORY_VALUES = frozenset({
+    ExpenseCategory.UNKNOWN.value,
+    ExpenseCategory.SKIP.value,
+    ExpenseCategory.REFUND.value,
+    ExpenseCategory.INCOME.value,
+})
+
+
+def is_state_category_value(value: str) -> bool:
+    """判断飞书表里的某行 category 字段是否是状态展示值（不应被 step 当业务分类使用）。"""
+    return value in _STATE_CATEGORY_VALUES
 
 class ExtraPayCategory(Enum):
     DAILY = '日常开支'
@@ -74,4 +122,6 @@ class CategoryInfo:
         pass
 
 if __name__ == "__main__":
-    print(ExpenseCategory.keys())
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logging.info(list(ExpenseCategory))

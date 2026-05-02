@@ -1,5 +1,4 @@
-from bill_item import ClassifyAlg
-from category import ExpenseCategory, Lifecycle
+from category import ClassifyAlg, ExpenseCategory, Lifecycle
 from classifiers.wet_market import WetMarket
 
 from helpers import make_context, make_item

@@ -2,8 +2,8 @@
 
 from typing import List, Optional
 
-from bill_item import BillItem, BillType
-from category import CategoryInfo
+from bill_item import BillItem
+from category import BillType, CategoryInfo
 from classifiers.base import CategoryInfoLoader, Context
 
 

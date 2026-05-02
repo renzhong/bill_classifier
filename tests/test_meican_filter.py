@@ -1,7 +1,6 @@
 import datetime
 
-from bill_item import BillType
-from category import ExpenseCategory, Lifecycle
+from category import BillType, ClassifyAlg, Lifecycle
 from classifiers.meican_filter import MeicanFilter
 
 from helpers import make_context, make_item
@@ -16,6 +15,7 @@ def test_weekday_18_marked_skip():
     item = make_item(payee="高德地图总部-美餐餐厅A区", bill_time=_ts(hour=18))
     MeicanFilter().run([item], make_context())
     assert item.lifecycle == Lifecycle.SKIPPED
+    assert item.classify_alg == ClassifyAlg.COMPANY_SUBSIDY
 
 
 def test_weekday_21_marked_skip():

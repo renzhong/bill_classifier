@@ -1,7 +1,6 @@
 import datetime
 
-from bill_item import BillType
-from category import ExpenseCategory
+from category import BillType
 from classifiers.cross_month_unified import (
     CrossMonthUnified,
     _is_orphan_refund,

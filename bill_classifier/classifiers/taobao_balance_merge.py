@@ -24,22 +24,26 @@ order_id 格式（实测，bill.py 用支付宝商家订单号 row[1]）：
 - 按核心订单号分组：
     - 既有充值又有退款 → 同月闭合，合并：保留充值条目的第一条，
       amount = 充值总额 - 退款总额，taobao_balance_extra 写入余额说明，
-      net=0 时整条 SKIP
+      abs(net) < 0.01 → SKIPPED + classify_alg=FULL_REFUND
+      net >= 0.01 → lifecycle 不变 + classify_alg=MERGED（中间态，
+                     后续分类 step 命中时会被覆盖）
+      合并条目还会写 is_merged=True / merged_from=合并前快照
     - 只有退款（充值在上月）→ 不动，留给策略 3 (cross_month_unified)
     - 只有充值（同月还没退或不退）→ 不动
 - 不能提取核心订单号的条目原样保留
 
 举例（同月）：
-- 充值 1000 + 退款 100 + 退款 31 = 净 869 → 一条 869 的"购物金消费余额: 869.00"
-- 充值 1000 + 退款 1000 = 净 0 → SKIP
+- 充值 1000 + 退款 100 + 退款 31 = 净 869 → 一条 869，classify_alg=MERGED
+- 充值 1000 + 退款 1000 = 净 0 → SKIPPED + FULL_REFUND
 - 上月充值 1000，本月退款 100 → 本月只看到退款，不动
 """
 
+import copy
 import logging
 from typing import Dict, List, Optional
 
-from bill_item import BillItem, BillType
-from category import Lifecycle, SkipReason
+from bill_item import BillItem
+from category import BillType, ClassifyAlg, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -49,6 +53,7 @@ _PURCHASE_KEYWORD = "购物金"
 _REFUND_PREFIX = "退款-"
 _T200P_PREFIX = "T200P"
 _MIN_CORE_LEN = 10  # 核心订单号至少 10 位数字（防止短数字 collision）
+_ZERO_THRESHOLD = 0.01
 
 
 def _extract_core_order_id(order_id: str) -> Optional[str]:
@@ -152,12 +157,23 @@ class TaobaoBalanceMerge(Step):
             refund_total = sum(g.amount for g in refunds)
             net = round(recharge_total - refund_total, 2)
 
+            # 合并前快照：先于任何 amount 修改之前浅拷贝，按 bill_time 升序
+            snapshot = sorted(
+                (copy.copy(it) for it in group),
+                key=lambda it: it.bill_time,
+            )
+
             primary = recharges[0]
             primary.amount = net
             primary.taobao_balance_extra = f"购物金消费余额: {net:.2f}"
-            if net == 0:
+            primary.is_merged = True
+            primary.merged_from = snapshot
+            if abs(net) < _ZERO_THRESHOLD:
                 primary.lifecycle = Lifecycle.SKIPPED
                 primary.skip_reason = SkipReason.ZERO_AMOUNT
+                primary.classify_alg = ClassifyAlg.FULL_REFUND
+            else:
+                primary.classify_alg = ClassifyAlg.MERGED
             merged.append(primary)
 
             logger.info(

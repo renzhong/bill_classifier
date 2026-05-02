@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os  # noqa
 import logging
-import datetime
 import sys
 import configparser
 import argparse
 
 from feishu import FeishuSheetAPI
 from feishu_auth import FeishuAuthError, get_valid_user_access_token
-from category import Lifecycle
-from bill_item import BillType, ClassifyAlg
+from category import BillType, ClassifyAlg, Lifecycle
 from bill import AliPayBill, WeChatBill
 from bill_config import BillConfig
 from bill_file import BillFile
@@ -86,31 +83,35 @@ def debug_bill_item_list(prefix, bill_item_list):
     for bill_item in bill_item_list:
         logging.info(bill_item)
 
-def _reorder_with_neighbor_groups(items):
-    """策略 4 输出方案 A：同 neighbor_group 的 item 紧邻输出。
+def _reorder_with_groups(items):
+    """同 group_id 的 item 按 bill_time 升序紧邻输出。
 
-    遍历输入顺序，遇到 neighbor_group 非空的 item，紧跟着把同组其他成员
-    一起输出（去重）。锚点的 classify_alg 仍保留 MATCH，只调整顺序。
+    遍历输入顺序，遇到 group_id 非空的 item，立刻把同组所有成员按 bill_time
+    依次输出（去重）。组内排序基于 bill_time，避免成员被分桶（不同 classify_alg）
+    打散后顺序错乱。
     """
     by_group = {}
     for it in items:
-        g = getattr(it, 'neighbor_group', None)
+        g = getattr(it, 'group_id', None)
         if g:
             by_group.setdefault(g, []).append(it)
+    for members in by_group.values():
+        members.sort(key=lambda x: x.bill_time)
 
     out = []
     seen_ids = set()
     for it in items:
         if id(it) in seen_ids:
             continue
-        out.append(it)
-        seen_ids.add(id(it))
-        g = getattr(it, 'neighbor_group', None)
+        g = getattr(it, 'group_id', None)
         if g:
-            for other in by_group.get(g, []):
-                if id(other) not in seen_ids:
-                    out.append(other)
-                    seen_ids.add(id(other))
+            for member in by_group.get(g, []):
+                if id(member) not in seen_ids:
+                    out.append(member)
+                    seen_ids.add(id(member))
+        else:
+            out.append(it)
+            seen_ids.add(id(it))
     return out
 
 
@@ -119,7 +120,7 @@ _CLASSIFIED_ALG_ORDER = (
     ClassifyAlg.MATCH,
     ClassifyAlg.REGULAR,
     ClassifyAlg.WET_MARKET,
-    ClassifyAlg.NEIGHBOR,
+    ClassifyAlg.FOLLOW,
     ClassifyAlg.GPT,
 )
 
@@ -128,13 +129,13 @@ def split_for_output(bill_item_list):
     """按 lifecycle 一级 + classify_alg 二级分流，返回 (主表 list, 收入 list, 右侧提醒 list)。
 
     主表展示顺序：
-        CLASSIFIED 按 classify_alg：MATCH → REGULAR → WET_MARKET → NEIGHBOR → GPT
+        CLASSIFIED 按 classify_alg：MATCH → REGULAR → WET_MARKET → FOLLOW → GPT
         → UNPROCESSED（等人工标）
         → CROSS_MONTH_REFUND（跨月退款，左侧主表保留 + 右侧也展示一份）
         → SKIPPED（被各种 reason 跳过的）
         → INCOME 类（最底部，按 bill_type=INCOME 单独分组）
 
-    最后对主表应用 neighbor_group 紧邻重排（方案 A）。
+    最后对主表应用 group_id 紧邻重排（同组按 bill_time 升序聚合）。
     右侧提醒：所有挂了 cross_month_origin 的条目（这些条目同时仍在左侧主表）。
     """
     classified_buckets = {alg: [] for alg in _CLASSIFIED_ALG_ORDER}
@@ -171,7 +172,7 @@ def split_for_output(bill_item_list):
     main_data.extend(skipped_data)
     main_data.extend(income_data)
 
-    main_data = _reorder_with_neighbor_groups(main_data)
+    main_data = _reorder_with_groups(main_data)
 
     right_extra = [it for it in bill_item_list if getattr(it, 'cross_month_origin', None)]
     return main_data, income_data, right_extra

@@ -1,5 +1,4 @@
-from bill_item import BillType
-from category import ExpenseCategory, Lifecycle
+from category import BillType, ClassifyAlg, Lifecycle
 from classifiers.merge_refund import MergeRefund
 
 from helpers import make_context, make_item
@@ -18,34 +17,43 @@ def test_single_item_with_order_id_passthrough():
     assert len(out) == 1
     assert out[0] is item
     assert out[0].lifecycle == Lifecycle.UNPROCESSED
+    assert out[0].is_merged is False
 
 
 def test_expense_minus_refund_zero_marks_skip():
-    expense = make_item(amount=20, order_id="O1", item_name="商品")
+    expense = make_item(amount=20, order_id="O1", item_name="商品", bill_time=10)
     refund = make_item(
         amount=20,
         order_id="O1",
         item_name="商品退款",
         bill_type=BillType.OTHER,
+        bill_time=20,
     )
     out = MergeRefund().run([expense, refund], make_context())
     assert len(out) == 1
     assert out[0].amount == 0
     assert out[0].lifecycle == Lifecycle.SKIPPED
+    assert out[0].classify_alg == ClassifyAlg.FULL_REFUND
+    assert out[0].is_merged is True
+    assert [it.bill_time for it in out[0].merged_from] == [10, 20]
 
 
 def test_partial_refund_keeps_remainder():
-    expense = make_item(amount=20, order_id="O1", item_name="商品")
+    expense = make_item(amount=20, order_id="O1", item_name="商品", bill_time=10)
     refund = make_item(
         amount=5,
         order_id="O1",
         item_name="商品退款",
         bill_type=BillType.OTHER,
+        bill_time=20,
     )
     out = MergeRefund().run([expense, refund], make_context())
     assert len(out) == 1
     assert out[0].amount == 15
     assert out[0].lifecycle == Lifecycle.UNPROCESSED
+    assert out[0].classify_alg == ClassifyAlg.MERGED
+    assert out[0].is_merged is True
+    assert [it.bill_time for it in out[0].merged_from] == [10, 20]
 
 
 def test_two_expenses_same_order_id_summed():
