@@ -3,13 +3,19 @@
 逻辑：
 - 一些转账类的 item_name 在飞书分类表里没维护，但又确定不算开销
   （资金搬运、内部转账等），用一个 in-memory 列表直接判 SKIP
-- 仅对仍是 UNKNOWN 的 item 生效
+- 仅对仍是 UNPROCESSED 的 item 生效；不看 bill_type
 - 默认黑名单见 SKIP_ITEM_NAMES；构造时可传 names 覆盖
 
+实施位置：cross_month_unified 之后、non_expense_skip 之前。
+理由：黑名单是基于 item_name 的硬规则，应优先于 bill_type 判断生效。
+比如"余额宝-自动转入" bill_type 通常是"不计收支"(OTHER)，如果排在
+non_expense_skip 之后，会被前者以 NON_EXPENSE 的理由先 SKIP 掉，
+本 step 的 BLACKLIST 标签就永远打不出来。
+
 举例（默认黑名单：余额宝-自动转入、转账备注:微信转账）：
-- item_name="余额宝-自动转入" → SKIP（资金从余额转到余额宝，不算开销）
-- item_name="转账备注:微信转账" → SKIP
-- item_name="正常商品名" → 保持 UNKNOWN，留给后续 step
+- item_name="余额宝-自动转入" → SKIP + BLACKLIST
+- item_name="转账备注:微信转账" → SKIP + BLACKLIST
+- item_name="正常商品名" → 保持 UNPROCESSED，留给后续 step
 """
 
 import logging

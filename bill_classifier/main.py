@@ -150,18 +150,20 @@ def split_for_output(bill_item_list):
         if it.bill_type == BillType.INCOME:
             income_data.append(it)
             continue
-        if it.lifecycle == Lifecycle.CLASSIFIED:
-            bucket = classified_buckets.get(it.classify_alg)
-            if bucket is not None:
-                bucket.append(it)
-            else:
-                # 防御：未知 classify_alg，归到 unprocessed
-                unprocessed_data.append(it)
-        elif it.lifecycle == Lifecycle.CROSS_MONTH_REFUND:
-            cross_month_data.append(it)
-        elif it.lifecycle == Lifecycle.SKIPPED:
+        # SKIPPED / CROSS_MONTH_REFUND 是终态展示分组，先于按 classify_alg 分桶。
+        # （注意：skip_keywords 把 classify_alg 标 MATCH 但 lifecycle=SKIPPED，
+        #   必须先按 lifecycle 拦截，否则会被错误归到 MATCH bucket。）
+        if it.lifecycle == Lifecycle.SKIPPED:
             skipped_data.append(it)
-        else:  # UNPROCESSED
+            continue
+        if it.lifecycle == Lifecycle.CROSS_MONTH_REFUND:
+            cross_month_data.append(it)
+            continue
+        bucket = classified_buckets.get(it.classify_alg)
+        if bucket is not None:
+            bucket.append(it)
+        else:
+            # 包括 classify_alg=None（真未分类）以及 MERGED 等中间态
             unprocessed_data.append(it)
 
     main_data = []

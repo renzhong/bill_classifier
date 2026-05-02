@@ -29,7 +29,8 @@ def test_single_meituan_then_match_anchor_forms_group():
     anchor = _match_anchor(T0 + 180)
     NeighborInference().run([target, anchor], make_context())
 
-    assert target.lifecycle == Lifecycle.CLASSIFIED
+    # neighbor_inference 只是标记，不推进 lifecycle
+    assert target.lifecycle == Lifecycle.UNPROCESSED
     assert target.category == ExpenseCategory.CATERING
     assert target.classify_alg == ClassifyAlg.FOLLOW
     expected = f"nbr:{anchor.order_id}"

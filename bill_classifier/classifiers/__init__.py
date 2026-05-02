@@ -18,10 +18,12 @@ DEFAULT_STEPS = [
     "merge_refund",
     "taobao_balance_merge",
     "cross_month_unified",
+    # skip_keywords 在 non_expense_skip 之前：让黑名单只看 item_name，
+    # 不被 bill_type=OTHER 的条目提前 SKIP 掉（典型：余额宝-自动转入）。
+    "skip_keywords",
     "non_expense_skip",
     "exact_match",
     "regex_match",
-    "skip_keywords",
     "wet_market",
     "neighbor_inference",
     "gpt",

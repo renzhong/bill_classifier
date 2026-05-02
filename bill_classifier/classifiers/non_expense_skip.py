@@ -5,10 +5,14 @@
 - 新设计：独立 step `non_expense_skip` 负责把非支出（INCOME / OTHER）标 SKIPPED，
          分类 step 只关心 UNPROCESSED 的 EXPENSE
 
-实施位置：cross_month_unified 之后、exact_match 之前。
-理由：cross_month_unified 已经把"跨月退款"挑出来标 CROSS_MONTH_REFUND（这些是
-OTHER 类的合法条目，需要在右侧提醒），non_expense_skip 跑到它们时
-lifecycle != UNPROCESSED 会自动跳过，不会误覆盖。
+实施位置：cross_month_unified / skip_keywords 之后、exact_match 之前。
+理由：
+- cross_month_unified 已经把"跨月退款"挑出来标 CROSS_MONTH_REFUND（这些是
+  OTHER 类的合法条目，需要在右侧提醒），non_expense_skip 跑到它们时
+  lifecycle != UNPROCESSED 会自动跳过，不会误覆盖。
+- skip_keywords 也排在前面，让 item_name 黑名单优先于 bill_type 判断生效
+  （否则像"余额宝-自动转入"这种 bill_type=OTHER 的条目会被本 step 抢先以
+  NON_EXPENSE 的理由 SKIP 掉，黑名单永远没机会标 BLACKLIST）。
 
 举例：
 - bill_type=INCOME（工资、转账收）→ SKIPPED + NON_EXPENSE

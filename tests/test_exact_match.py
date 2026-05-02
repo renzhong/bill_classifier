@@ -26,10 +26,14 @@ def test_payee_hit_when_item_name_miss():
     assert item.category == ExpenseCategory.CATERING
 
 
-def test_non_expense_marked_skip():
+def test_non_expense_left_untouched():
+    """非 EXPENSE 不在本 step 职责内：不分类也不打 SKIP，由 non_expense_skip 负责。"""
     item = make_item(item_name="工资", bill_type=BillType.INCOME)
     ExactMatch().run([item], make_context(info=_info()))
-    assert item.lifecycle == Lifecycle.SKIPPED
+    assert item.lifecycle == Lifecycle.UNPROCESSED
+    assert item.category is None
+    assert item.classify_alg is None
+    assert item.skip_reason is None
 
 
 def test_already_categorized_skipped():

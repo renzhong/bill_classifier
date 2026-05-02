@@ -104,7 +104,6 @@ class SkipReason(Enum):
     BLACKLIST = "blacklist"          # skip_keywords：item_name 黑名单
     NON_EXPENSE = "non_expense"      # bill_type ∈ {INCOME, OTHER} 不计入主表合计
     ZERO_AMOUNT = "zero_amount"      # merge_refund / taobao_balance_merge 净额为 0
-    REFUND_NO_ORIG = "refund_no_orig"  # merge_refund 无 order_id（已知 bug，保持原行为）
 
     def to_str(self) -> str:
         return self.value
