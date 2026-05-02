@@ -1,5 +1,5 @@
 from bill_item import ClassifyAlg
-from category import CategoryInfo, ExpenseCategory
+from category import CategoryInfo, ExpenseCategory, Lifecycle
 from classifiers.regex_match import RegexMatch
 
 from helpers import make_context, make_item
@@ -29,15 +29,15 @@ def test_payee_substring_hit_when_item_miss():
 
 def test_already_categorized_skipped():
     item = make_item(item_name="地铁充值")
-    item.category = ExpenseCategory.SKIP
+    item.lifecycle = Lifecycle.SKIPPED
     RegexMatch().run([item], make_context(info=_info()))
-    assert item.category == ExpenseCategory.SKIP
+    assert item.lifecycle == Lifecycle.SKIPPED
 
 
 def test_loader_failure_only_skips_this_step():
     item = make_item(item_name="地铁充值")
     RegexMatch().run([item], make_context(info=None, ok=False))
-    assert item.category == ExpenseCategory.UNKNOWN
+    assert item.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_first_match_wins():

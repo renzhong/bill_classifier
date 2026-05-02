@@ -20,7 +20,7 @@ import re
 from typing import List
 
 from bill_item import BillItem
-from category import ExpenseCategory, Lifecycle, SkipReason
+from category import Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,6 @@ class MeicanFilter(Step):
             is_work_hour = dt.hour == 18 or dt.hour == 21
 
             if is_weekday and is_work_hour:
-                item.category = ExpenseCategory.SKIP  # 双写：迁移期保留旧字段
                 item.lifecycle = Lifecycle.SKIPPED
                 item.skip_reason = SkipReason.FILTER
                 mark_skip_count += 1

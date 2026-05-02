@@ -10,7 +10,7 @@ import argparse
 
 from feishu import FeishuSheetAPI
 from feishu_auth import FeishuAuthError, get_valid_user_access_token
-from category import ExpenseCategory, Lifecycle
+from category import Lifecycle
 from bill_item import BillType, ClassifyAlg
 from bill import AliPayBill, WeChatBill
 from bill_config import BillConfig
@@ -77,9 +77,9 @@ def record_to_feishu(feishu_config, bill_item_dict):
 def check_unknown_items(bill_item_list):
     count = 0
     for item in bill_item_list:
-        if item.category == ExpenseCategory.UNKNOWN:
+        if item.lifecycle == Lifecycle.UNPROCESSED:
             count += 1
-    logging.debug("unknown category item size:{}".format(count))
+    logging.debug("unprocessed item size:{}".format(count))
 
 def debug_bill_item_list(prefix, bill_item_list):
     logging.info("-------{} size:{}--------".format(prefix, len(bill_item_list)))

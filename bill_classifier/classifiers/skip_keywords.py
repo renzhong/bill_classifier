@@ -16,7 +16,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem
-from category import ExpenseCategory, Lifecycle, SkipReason
+from category import Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -38,10 +38,9 @@ class SkipKeywords(Step):
     def run(self, items: List[BillItem], ctx: Context) -> List[BillItem]:
         count = 0
         for item in items:
-            if item.lifecycle != Lifecycle.UNPROCESSED or item.category != ExpenseCategory.UNKNOWN:
+            if item.lifecycle != Lifecycle.UNPROCESSED:
                 continue
             if item.item_name in self._names:
-                item.category = ExpenseCategory.SKIP  # 双写
                 item.lifecycle = Lifecycle.SKIPPED
                 item.skip_reason = SkipReason.BLACKLIST
                 count += 1

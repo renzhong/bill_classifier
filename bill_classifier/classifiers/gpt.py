@@ -25,7 +25,7 @@ import re
 from typing import List
 
 from bill_item import BillItem, ClassifyAlg
-from category import ExpenseCategory, Lifecycle, expense_category_mapping
+from category import Lifecycle, expense_category_mapping
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class GPTStep(Step):
         for item in items:
             if call_limit >= 0 and mark_count == call_limit:
                 break
-            if item.lifecycle != Lifecycle.UNPROCESSED or item.category != ExpenseCategory.UNKNOWN:
+            if item.lifecycle != Lifecycle.UNPROCESSED:
                 continue
 
             if item.payee == '美团' or item.payee == '美团平台商户':

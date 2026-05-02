@@ -1,5 +1,5 @@
 from bill_item import BillType
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.merge_refund import MergeRefund
 
 from helpers import make_context, make_item
@@ -9,7 +9,7 @@ def test_no_order_id_marked_skip():
     item = make_item(amount=10, order_id="")
     out = MergeRefund().run([item], make_context())
     assert len(out) == 1
-    assert out[0].category == ExpenseCategory.SKIP
+    assert out[0].lifecycle == Lifecycle.SKIPPED
 
 
 def test_single_item_with_order_id_passthrough():
@@ -17,7 +17,7 @@ def test_single_item_with_order_id_passthrough():
     out = MergeRefund().run([item], make_context())
     assert len(out) == 1
     assert out[0] is item
-    assert out[0].category == ExpenseCategory.UNKNOWN
+    assert out[0].lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_expense_minus_refund_zero_marks_skip():
@@ -31,7 +31,7 @@ def test_expense_minus_refund_zero_marks_skip():
     out = MergeRefund().run([expense, refund], make_context())
     assert len(out) == 1
     assert out[0].amount == 0
-    assert out[0].category == ExpenseCategory.SKIP
+    assert out[0].lifecycle == Lifecycle.SKIPPED
 
 
 def test_partial_refund_keeps_remainder():
@@ -45,7 +45,7 @@ def test_partial_refund_keeps_remainder():
     out = MergeRefund().run([expense, refund], make_context())
     assert len(out) == 1
     assert out[0].amount == 15
-    assert out[0].category == ExpenseCategory.UNKNOWN
+    assert out[0].lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_two_expenses_same_order_id_summed():

@@ -25,7 +25,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem, BillType, ClassifyAlg
-from category import ExpenseCategory, Lifecycle, SkipReason
+from category import Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -47,11 +47,12 @@ class ExactMatch(Step):
 
         mark_count = 0
         for item in items:
-            # 已被前置 step 处理过的（含 cross_month_unified 标的 CROSS_MONTH_REFUND）跳过
-            if item.lifecycle != Lifecycle.UNPROCESSED or item.category != ExpenseCategory.UNKNOWN:
+            # 已被前置 step 处理过的（含 non_expense_skip 标的 SKIPPED 和
+            # cross_month_unified 标的 CROSS_MONTH_REFUND）跳过
+            if item.lifecycle != Lifecycle.UNPROCESSED:
                 continue
+            # 防御：理论上 non_expense_skip 已把非支出标 SKIPPED，不会到这里
             if item.bill_type != BillType.EXPENSE:
-                item.category = ExpenseCategory.SKIP  # 双写
                 item.lifecycle = Lifecycle.SKIPPED
                 item.skip_reason = SkipReason.NON_EXPENSE
                 continue

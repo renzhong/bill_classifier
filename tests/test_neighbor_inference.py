@@ -1,5 +1,5 @@
 from bill_item import ClassifyAlg
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.neighbor_inference import NeighborInference
 
 from helpers import make_context, make_item
@@ -42,8 +42,8 @@ def test_no_match_anchor_in_window_keeps_unknown():
     target = _meituan_unknown()
     far_anchor = _match_anchor(T0 + 301)  # 超出 5 分钟
     NeighborInference().run([target, far_anchor], make_context())
-    assert target.category == ExpenseCategory.UNKNOWN
-    assert target.classify_alg == ClassifyAlg.UNKNOWN
+    assert target.lifecycle == Lifecycle.UNPROCESSED
+    assert target.classify_alg is None
     assert target.neighbor_group is None
 
 
@@ -52,8 +52,8 @@ def test_two_match_anchors_in_window_keeps_unknown():
     a1 = _match_anchor(T0 + 60, category=ExpenseCategory.CATERING)
     a2 = _match_anchor(T0 + 200, category=ExpenseCategory.DAILY_EXPENSES)
     NeighborInference().run([target, a1, a2], make_context())
-    assert target.category == ExpenseCategory.UNKNOWN
-    assert target.classify_alg == ClassifyAlg.UNKNOWN
+    assert target.lifecycle == Lifecycle.UNPROCESSED
+    assert target.classify_alg is None
 
 
 def test_anchor_in_past_does_not_count_one_directional():
@@ -61,7 +61,7 @@ def test_anchor_in_past_does_not_count_one_directional():
     early_anchor = _match_anchor(T0 - 60)
     target = _meituan_unknown(t=T0)
     NeighborInference().run([early_anchor, target], make_context())
-    assert target.category == ExpenseCategory.UNKNOWN
+    assert target.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_anchor_at_window_boundary_inclusive():
@@ -76,7 +76,7 @@ def test_anchor_at_window_boundary_inclusive():
     target2 = _meituan_unknown(t=2 * T0)
     over = _match_anchor(2 * T0 + 301)
     NeighborInference().run([target2, over], make_context())
-    assert target2.category == ExpenseCategory.UNKNOWN
+    assert target2.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_non_match_anchors_ignored():
@@ -87,7 +87,7 @@ def test_non_match_anchors_ignored():
         anchor = _match_anchor(T0 + 100)
         anchor.classify_alg = alg  # 改成非 MATCH 锚点
         NeighborInference().run([target, anchor], make_context())
-        assert target.category == ExpenseCategory.UNKNOWN, f"alg={alg} 不应触发"
+        assert target.lifecycle == Lifecycle.UNPROCESSED, f"alg={alg} 不应触发"
 
 
 def test_non_low_info_payee_skipped():
@@ -95,7 +95,7 @@ def test_non_low_info_payee_skipped():
     target = make_item(payee="星巴克", item_name="拿铁", bill_time=T0)
     anchor = _match_anchor(T0 + 60)
     NeighborInference().run([target, anchor], make_context())
-    assert target.category == ExpenseCategory.UNKNOWN
+    assert target.lifecycle == Lifecycle.UNPROCESSED
     assert target.neighbor_group is None
 
 
@@ -103,6 +103,7 @@ def test_already_classified_skipped():
     """已分类的 item 即使是低信息量 payee 也不被覆盖。"""
     target = _meituan_unknown()
     target.category = ExpenseCategory.CATERING  # 假设之前 step 已分
+    target.lifecycle = Lifecycle.CLASSIFIED
     anchor = _match_anchor(T0 + 60, category=ExpenseCategory.MEDICAL)
     NeighborInference().run([target, anchor], make_context())
     # 不被覆盖
@@ -167,4 +168,4 @@ def test_empty_or_single_item_list():
     NeighborInference().run([], make_context())
     one = _meituan_unknown()
     NeighborInference().run([one], make_context())
-    assert one.category == ExpenseCategory.UNKNOWN
+    assert one.lifecycle == Lifecycle.UNPROCESSED

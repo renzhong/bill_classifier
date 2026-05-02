@@ -26,7 +26,7 @@ import re
 from typing import List, Optional
 
 from bill_item import BillItem, ClassifyAlg
-from category import ExpenseCategory, Lifecycle
+from category import Lifecycle
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class NeighborInference(Step):
         mark_count = 0
 
         for i, item in enumerate(items):
-            if item.lifecycle != Lifecycle.UNPROCESSED or item.category != ExpenseCategory.UNKNOWN:
+            if item.lifecycle != Lifecycle.UNPROCESSED:
                 continue
             if not self._is_target(item):
                 continue

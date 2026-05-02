@@ -1,5 +1,5 @@
 from bill_item import BillType
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.taobao_balance_merge import (
     TaobaoBalanceMerge,
     _extract_core_order_id,
@@ -93,7 +93,7 @@ def test_recharge_full_refund_marks_skip():
     assert len(out) == 1
     assert out[0] is rc  # 保留充值条目作为合并载体
     assert out[0].amount == 0
-    assert out[0].category == ExpenseCategory.SKIP
+    assert out[0].lifecycle == Lifecycle.SKIPPED
     assert out[0].taobao_balance_extra == "购物金消费余额: 0.00"
 
 
@@ -109,7 +109,7 @@ def test_recharge_partial_refund_keeps_net():
     # 余额说明里也是净额
     assert out[0].taobao_balance_extra == "购物金消费余额: 869.00"
     # 净额非 0 不打 SKIP
-    assert out[0].category == ExpenseCategory.UNKNOWN
+    assert out[0].lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_only_refund_no_recharge_left_alone():

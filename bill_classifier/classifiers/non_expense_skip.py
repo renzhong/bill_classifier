@@ -21,7 +21,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem, BillType
-from category import ExpenseCategory, Lifecycle, SkipReason
+from category import Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,6 @@ class NonExpenseSkip(Step):
                 continue
             if item.bill_type == BillType.EXPENSE:
                 continue
-            item.category = ExpenseCategory.SKIP  # 双写：迁移期保留旧字段
             item.lifecycle = Lifecycle.SKIPPED
             item.skip_reason = SkipReason.NON_EXPENSE
             count += 1

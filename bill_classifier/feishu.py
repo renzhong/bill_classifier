@@ -233,14 +233,14 @@ class FeishuSheetAPI:
         for item in bill_item_list:
             line_data = [
                 item.amount,
-                item.category.to_str(),
+                item.category_display(),
                 item.payee,
                 item.item_name,
                 item.bill_type.value,
                 timestamp2str(item.bill_time),
                 item.bill_source,
                 item.owner,
-                item.classify_alg.to_str()
+                item.classify_alg_display(),
             ]
 
             data['valueRange']['values'].append(line_data)

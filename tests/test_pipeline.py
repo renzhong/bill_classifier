@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pipeline
 from bill_item import ClassifyAlg
-from category import CategoryInfo, ExpenseCategory
+from category import CategoryInfo, ExpenseCategory, Lifecycle
 from classifiers.base import CategoryInfoLoader
 
 from helpers import FakeGPTClassifier, make_item
@@ -52,7 +52,7 @@ def test_disabled_gpt_step_leaves_unknown():
         category_info_loader=CategoryInfoLoader(fetch=lambda: (True, _info_with_metro_match())),
         gpt_classifier_factory=lambda: fake_gpt,
     )
-    assert out[0].category == ExpenseCategory.UNKNOWN
+    assert out[0].lifecycle == Lifecycle.UNPROCESSED
     assert fake_gpt.calls == []
 
 

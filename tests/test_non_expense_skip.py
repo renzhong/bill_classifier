@@ -10,7 +10,6 @@ def test_expense_item_unchanged():
     NonExpenseSkip().run([item], make_context())
     assert item.lifecycle == Lifecycle.UNPROCESSED
     assert item.skip_reason is None
-    assert item.category == ExpenseCategory.UNKNOWN
 
 
 def test_income_item_marked_skipped():
@@ -18,8 +17,6 @@ def test_income_item_marked_skipped():
     NonExpenseSkip().run([item], make_context())
     assert item.lifecycle == Lifecycle.SKIPPED
     assert item.skip_reason == SkipReason.NON_EXPENSE
-    # 双写：旧 category 字段也设为 SKIP
-    assert item.category == ExpenseCategory.SKIP
 
 
 def test_other_item_marked_skipped():
@@ -27,7 +24,6 @@ def test_other_item_marked_skipped():
     NonExpenseSkip().run([item], make_context())
     assert item.lifecycle == Lifecycle.SKIPPED
     assert item.skip_reason == SkipReason.NON_EXPENSE
-    assert item.category == ExpenseCategory.SKIP
 
 
 def test_already_skipped_not_overridden():
@@ -35,7 +31,6 @@ def test_already_skipped_not_overridden():
     item = make_item(bill_type=BillType.OTHER)
     item.lifecycle = Lifecycle.SKIPPED
     item.skip_reason = SkipReason.FILTER  # 假设之前 meican_filter 标的
-    item.category = ExpenseCategory.SKIP
     NonExpenseSkip().run([item], make_context())
     # skip_reason 不被改写
     assert item.skip_reason == SkipReason.FILTER

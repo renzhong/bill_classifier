@@ -19,7 +19,6 @@ class ClassifyAlg(Enum):
     WET_MARKET = "菜场模式"
     GPT = "GPT模式"
     NEIGHBOR = "相邻推断"
-    UNKNOWN = "无法识别"
 
     def to_str(self) -> str:
         return self.value
@@ -36,18 +35,30 @@ class BillItem:
         self.bill_time = bill_time      # 订单发生时间
         self.bill_source = bill_source  # 订单来源（alipay/wechat）
         self.owner = owner              # 账单人（zrz/cwx）
-        self.category = ExpenseCategory.UNKNOWN  # 分类（旧字段，迁移期保留）
-        self.classify_alg = ClassifyAlg.UNKNOWN  # 识别模式（旧字段，迁移期保留）
-        # 生命周期 / 状态机（lifecycle_refactor 引入）：
-        # 各 step 应根据 lifecycle 而不是 category != UNKNOWN 来判断"是否处理过"。
-        # 迁移期与旧 category 状态值（UNKNOWN/SKIP）双写，待全部 step 改造完成后
-        # 再从 ExpenseCategory 中移除状态值。
+        # 业务分类（None 表示未分类；展示用 category_display() 派生字符串）
+        self.category = None
+        # 哪个分类 step 完成（None 表示未分类）
+        self.classify_alg = None
+        # 生命周期：各 step 根据 lifecycle 判断"是否处理过"
         self.lifecycle = Lifecycle.UNPROCESSED
         self.skip_reason = None             # SkipReason，仅 lifecycle == SKIPPED 时填
         # 策略上下文字段（按需由各 step 写入，默认 None 对其它 step 透明）
         self.neighbor_group = None          # 策略 4：相邻账单组 ID，同组紧邻输出
         self.taobao_balance_extra = None    # 策略 2：购物金合并后追加的说明文本
         self.cross_month_origin = None      # 策略 3：跨月退款关联到的原支出条目 dict
+
+    def category_display(self) -> str:
+        """飞书表格'分类'列展示值（按 lifecycle 派生）。"""
+        if self.lifecycle == Lifecycle.CLASSIFIED and self.category is not None:
+            return self.category.to_str()
+        if self.lifecycle == Lifecycle.SKIPPED:
+            return "skip"
+        if self.lifecycle == Lifecycle.CROSS_MONTH_REFUND:
+            return "退款"
+        return "unknown"  # UNPROCESSED
+
+    def classify_alg_display(self) -> str:
+        return self.classify_alg.to_str() if self.classify_alg else "无法识别"
 
     def __str__(self):
         return """
@@ -62,5 +73,5 @@ Amount: {}
     category: {}""".format(
             self.amount, self.payee, self.item_name, self.bill_type.name,
             self.order_id, timestamp2str(self.bill_time), self.bill_source, self.owner,
-            self.category.to_str()
+            self.category_display()
         )

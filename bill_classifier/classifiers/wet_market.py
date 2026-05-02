@@ -60,7 +60,7 @@ class WetMarket(Step):
             for j in range(s, e + 1):
                 if j == i:
                     continue
-                if items[j].lifecycle == Lifecycle.UNPROCESSED and items[j].category == ExpenseCategory.UNKNOWN:
+                if items[j].lifecycle == Lifecycle.UNPROCESSED:
                     items[j].category = ExpenseCategory.BUY_VEGETABLES
                     items[j].classify_alg = ClassifyAlg.WET_MARKET
                     items[j].lifecycle = Lifecycle.CLASSIFIED
