@@ -6,3 +6,12 @@ config/zc.ini
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# 飞书历史数据本地 cache（feishu_history_loader 写入）
+.cache/
+
+# 回测产物
+tools/backtest_results/
+
+# 设计文档（仅本地，不入库）
+prd/
