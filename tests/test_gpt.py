@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
-from bill_item import ClassifyAlg
-from category import ExpenseCategory, Lifecycle
+from category import ClassifyAlg, ExpenseCategory, Lifecycle
 from classifiers.gpt import GPTStep
 
 from helpers import FakeGPTClassifier, make_context, make_item

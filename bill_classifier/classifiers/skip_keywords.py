@@ -16,7 +16,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem
-from category import Lifecycle, SkipReason
+from category import ClassifyAlg, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ class SkipKeywords(Step):
             if item.item_name in self._names:
                 item.lifecycle = Lifecycle.SKIPPED
                 item.skip_reason = SkipReason.BLACKLIST
+                item.classify_alg = ClassifyAlg.MATCH
                 count += 1
         logger.info("extra skip item size:{}".format(count))
         return items

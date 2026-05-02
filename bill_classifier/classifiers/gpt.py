@@ -24,8 +24,8 @@ import logging
 import re
 from typing import List
 
-from bill_item import BillItem, ClassifyAlg
-from category import Lifecycle, expense_category_mapping
+from bill_item import BillItem
+from category import ClassifyAlg, Lifecycle, expense_category_mapping
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)

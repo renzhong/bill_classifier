@@ -51,15 +51,6 @@ class GPTConfig:
         self.active_model = ""
         self.models = {}
 
-
-class StrategyConfig:
-    """pipeline 行为配置，目前只支持禁用某些 step。"""
-
-    disabled_steps: list
-
-    def __init__(self):
-        self.disabled_steps = []
-
     @property
     def current_model(self) -> ModelConfig:
         if self.active_model not in self.models:
@@ -68,6 +59,15 @@ class StrategyConfig:
                 f"已知模型配置: {list(self.models.keys())}"
             )
         return self.models[self.active_model]
+
+
+class StrategyConfig:
+    """pipeline 行为配置，目前只支持禁用某些 step。"""
+
+    disabled_steps: list
+
+    def __init__(self):
+        self.disabled_steps = []
 
 
 # 模型配置 section 的前缀，例如 [model.qwen3_max]

@@ -20,7 +20,7 @@ import re
 from typing import List
 
 from bill_item import BillItem
-from category import Lifecycle, SkipReason
+from category import ClassifyAlg, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ class MeicanFilter(Step):
             if is_weekday and is_work_hour:
                 item.lifecycle = Lifecycle.SKIPPED
                 item.skip_reason = SkipReason.FILTER
+                item.classify_alg = ClassifyAlg.COMPANY_SUBSIDY
                 mark_skip_count += 1
 
         logger.info("美餐餐厅工作日18点标记为skip的item数量:{}".format(mark_skip_count))

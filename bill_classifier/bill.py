@@ -3,12 +3,12 @@
 
 import re
 import logging
-import chardet
 import codecs
 import csv
 
 from util import is_chinese_equal, str2timestamp
-from bill_item import BillType, BillItem
+from bill_item import BillItem
+from category import BillType
 
 logger = logging.getLogger(__name__)
 

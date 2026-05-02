@@ -34,9 +34,9 @@ def main():
 
     try:
         device_data = request_device_authorization(auth_config["app_id"], auth_config["app_secret"], scope)
-        print("请在浏览器中打开以下链接完成授权:\n")
-        print(device_data["verification_uri_complete"])
-        print("")
+        logging.info("请在浏览器中打开以下链接完成授权:\n")
+        logging.info(device_data["verification_uri_complete"])
+        logging.info("")
         token_data = poll_device_token(
             auth_config["app_id"],
             auth_config["app_secret"],
@@ -49,16 +49,16 @@ def main():
 
         if not args.no_write_config:
             save_config(config, args.config_file)
-            print(f"授权成功，token 已写入 {args.config_file}")
+            logging.info("授权成功，token 已写入 %s", args.config_file)
         else:
-            print("授权成功，未写入 config.ini")
+            logging.info("授权成功，未写入 config.ini")
 
         if user_info.get("user_name") or user_info.get("user_open_id"):
-            print(f"当前用户: {user_info.get('user_name', '')} ({user_info.get('user_open_id', '')})")
+            logging.info("当前用户: %s (%s)", user_info.get("user_name", ""), user_info.get("user_open_id", ""))
 
         if args.print_shell:
-            print("")
-            print(format_shell_exports(token_data))
+            logging.info("")
+            logging.info(format_shell_exports(token_data))
     except FeishuAuthError as err:
         logging.error(str(err))
         sys.exit(1)

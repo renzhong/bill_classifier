@@ -7,28 +7,38 @@
     - 多条：拆成 expense_items（正常支出）和 refund_items
       （bill_type=OTHER 且 item_name 含「退款」）
         - expense_items 累加为净支出，再扣掉 refund_items 总额
-        - 净支出为 0 → 标 SKIP
+        - abs(净支出) < 0.01 → SKIPPED + classify_alg=FULL_REFUND
+        - 净支出 ≥ 0.01 → lifecycle=UNPROCESSED + classify_alg=MERGED（中间态，
+          后续分类 step 命中时会被覆盖）
         - 只有 refund_items（找不到原支出）→ 退款条目原样保留
 - 无 order_id 的记录直接标 SKIP
   （已知问题：会丢掉微信红包 / 转账等，TODO.md 已记录）
 
+合并产生的条目还会写：
+    is_merged = True
+    merged_from = 合并前子条目快照（浅拷贝，按 bill_time 升序）
+
 输出按 bill_time 升序。
 
 举例：
-- order O1：预付款 10 + 尾款 30 → 一条 40
-- order O2：商品 20 - 商品退款 20 → 一条 0，标 SKIP
-- order O3：商品 20 - 退款 5 → 一条 15
-- 无 order_id 的微信红包 → 标 SKIP
+- order O1：预付款 10 + 尾款 30 → 一条 40，classify_alg=MERGED
+- order O2：商品 20 - 商品退款 20 → 一条 0，SKIPPED + FULL_REFUND
+- order O3：商品 20 - 退款 5 → 一条 15，classify_alg=MERGED
+- 无 order_id 的微信红包 → SKIPPED + REFUND_NO_ORIG
 """
 
+import copy
 import logging
 from typing import List
 
-from bill_item import BillItem, BillType
-from category import Lifecycle, SkipReason
+from bill_item import BillItem
+from category import BillType, ClassifyAlg, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
+
+
+_ZERO_THRESHOLD = 0.01
 
 
 class MergeRefund(Step):
@@ -69,6 +79,12 @@ class MergeRefund(Step):
                 merged_items.extend(refund_items)
                 continue
 
+            # 合并前快照：先于任何 amount 修改之前浅拷贝，按 bill_time 升序
+            snapshot = sorted(
+                (copy.copy(it) for it in group),
+                key=lambda it: it.bill_time,
+            )
+
             # 多条 expense（如淘宝预付款 + 尾款）先累加，再扣退款
             merged = expense_items[0]
             debug_str = str(merged.amount)
@@ -79,9 +95,14 @@ class MergeRefund(Step):
                 merged.amount -= it.amount
                 debug_str += " - " + str(it.amount)
 
-            if merged.amount == 0.0:
+            merged.is_merged = True
+            merged.merged_from = snapshot
+            if abs(merged.amount) < _ZERO_THRESHOLD:
                 merged.lifecycle = Lifecycle.SKIPPED
                 merged.skip_reason = SkipReason.ZERO_AMOUNT
+                merged.classify_alg = ClassifyAlg.FULL_REFUND
+            else:
+                merged.classify_alg = ClassifyAlg.MERGED
 
             merged_items.append(merged)
             logger.debug(

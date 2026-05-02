@@ -4,7 +4,7 @@
 import logging
 from feishu import FeishuSheetAPI, FeishuUnit, timestamp2str
 from category import ExpenseCategory, ExtraPayCategory
-from bill_item import ClassifyAlg
+from category import ClassifyAlg
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,8 @@ class DetailSheet:
         self.feishu_api.AddDataValidation(
             self.sheet_id,
             validation_range,
-            [alg.value for alg in ClassifyAlg]
+            [alg.value for alg in ClassifyAlg],
+            color_overrides={ClassifyAlg.UNKNOWN.value: "#FCFCFC"},
         )
 
         # 设置日常/额外支持列为枚举
@@ -202,4 +203,3 @@ class DetailSheet:
             ])
 
         return self.feishu_api.WriteValues(self.sheet_id, sheet_range, values)
-

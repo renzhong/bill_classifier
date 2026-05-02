@@ -1,5 +1,4 @@
-from bill_item import BillType, ClassifyAlg
-from category import CategoryInfo, ExpenseCategory, Lifecycle
+from category import BillType, CategoryInfo, ClassifyAlg, ExpenseCategory, Lifecycle
 from classifiers.exact_match import ExactMatch
 
 from helpers import make_context, make_item

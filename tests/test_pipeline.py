@@ -1,8 +1,7 @@
 from types import SimpleNamespace
 
 import pipeline
-from bill_item import ClassifyAlg
-from category import CategoryInfo, ExpenseCategory, Lifecycle
+from category import CategoryInfo, ClassifyAlg, ExpenseCategory, Lifecycle
 from classifiers.base import CategoryInfoLoader
 
 from helpers import FakeGPTClassifier, make_item

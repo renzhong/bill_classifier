@@ -1,5 +1,4 @@
-from bill_item import ClassifyAlg
-from category import CategoryInfo, ExpenseCategory, Lifecycle
+from category import CategoryInfo, ClassifyAlg, ExpenseCategory, Lifecycle
 from classifiers.regex_match import RegexMatch
 
 from helpers import make_context, make_item

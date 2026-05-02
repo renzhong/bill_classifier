@@ -1,7 +1,11 @@
+import logging
+
 from openai import OpenAI
 import json
 
 from bill_config import ModelConfig
+
+logger = logging.getLogger(__name__)
 
 
 class GPTClassifier:
@@ -103,8 +107,8 @@ if __name__ == '__main__':
     classifier = GPTClassifier(bill_config.gpt_config.current_model)
 
     text = classifier.call("7-ELEVEn北京黄寺大街西侧店消费", "7-11(SEB)", 35, "2024-03-20 14:30")
-    print(text)
+    logger.info(text)
     if text not in expense_category_mapping:
-        print("text not in expense_category_mapping")
+        logger.info("text not in expense_category_mapping")
     else:
-        print("text in expense_category_mapping")
+        logger.info("text in expense_category_mapping")

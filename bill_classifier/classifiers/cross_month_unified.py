@@ -31,8 +31,8 @@ import datetime
 import logging
 from typing import Callable, Dict, List, Optional, Tuple
 
-from bill_item import BillItem, BillType
-from category import Lifecycle
+from bill_item import BillItem
+from category import BillType, Lifecycle
 from classifiers.base import Context, Step
 from classifiers.taobao_balance_merge import _extract_core_order_id
 

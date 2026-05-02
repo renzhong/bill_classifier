@@ -3,8 +3,7 @@ import json
 import datetime
 import logging
 from itertools import cycle
-from category import expense_category_mapping, ExpenseCategory
-from bill_item import ClassifyAlg
+from category import expense_category_mapping, ExpenseCategory, is_state_category_value
 from util import GetMonthInt
 
 logger = logging.getLogger(__name__)
@@ -184,12 +183,13 @@ class FeishuSheetAPI:
         else:
             return True
 
-    def AddDataValidation(self, sheet_id, validation_range, validation_keys):
+    def AddDataValidation(self, sheet_id, validation_range, validation_keys, color_overrides=None):
         # TODO: 是否需要 AddRows
         url = "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{}/dataValidation".format(self.sheet_token)
 
+        overrides = color_overrides or {}
         cycled_listc = cycle(self.unit_color)
-        validation_colors = [next(cycled_listc) for _ in validation_keys]
+        validation_colors = [overrides.get(k, next(cycled_listc)) for k in validation_keys]
         data = {
             "range": validation_range,
             "dataValidationType": "list",
@@ -307,7 +307,7 @@ class FeishuSheetAPI:
                         "type": "formula",
                         "text": "=SUMIF('{}'!B1:B{}, A{}, '{}'!A1:A{})".format(detail_sheet_name, row_size, line, detail_sheet_name, row_size)
                     }])
-        print(data)
+        logger.debug("UpdateMonthSheetData payload: %s", data)
 
         # 设置请求头
         headers = {
@@ -473,7 +473,16 @@ class FeishuSheetAPI:
         value_map = {}
         for value in values[1:]:
             key = str(value[0])
-            category = expense_category_mapping[value[1]]
+            raw = value[1]
+            # 状态展示值（unknown/skip/退款/收入）只用于 B 列下拉，
+            # 不该被分类 step 当业务分类匹配；遇到这种行直接忽略。
+            if is_state_category_value(raw):
+                logging.debug("跳过状态分类值（飞书表行已废弃）: %s -> %s", key, raw)
+                continue
+            category = expense_category_mapping.get(raw)
+            if category is None:
+                logging.debug("跳过未知分类值: %s -> %s", key, raw)
+                continue
             value_map[key] = category
 
         return True, value_map
@@ -498,7 +507,7 @@ class FeishuSheetAPI:
 
         values = rsp['data']['valueRange']['values']
         test_data_list = []
-        print("line:{}".format(len(values)))
+        logger.info("line:%d", len(values))
         for value in values:
             # 检查 value 是否是数组，是否有 8 个元素
             if len(value) != 8:
@@ -541,4 +550,4 @@ if __name__ == "__main__":
 
     # test_data_list = feishu_sheet_api.GetClassificationTestData('ad3acc!A1:A100')
     test_data_list = feishu_sheet_api.GetClassificationTestData('ad3acc')
-    print(test_data_list)
+    logger.info(test_data_list)

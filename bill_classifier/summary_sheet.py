@@ -59,26 +59,26 @@ class SummarySheet:
         start_pos = FeishuUnit('1', 'A')
         validation_range = "{}!A{}:A{}".format(self.sheet_id,
                                 start_pos.GetRow(offset = 1), start_pos.GetRow(offset = self.expense_category_size))
-        print(f"category range:{validation_range}")
+        logger.info("category range:%s", validation_range)
         self.feishu_api.AddDataValidation(self.sheet_id, validation_range, [category.value for category in ExpenseCategory])
 
         first_col_range = "{}!A{}:A{}".format(self.sheet_id,
                                 start_pos.GetRow(offset = 1), start_pos.GetRow(offset = self.expense_category_size))
         first_col_data = [[category.value] for category in ExpenseCategory]
         self.feishu_api.WriteValues(self.sheet_id, first_col_range, first_col_data)
-        print(f"category value:{first_col_range}")
+        logger.info("category value:%s", first_col_range)
 
         extra_pay_col_range = "{}!A{}:A{}".format(self.sheet_id,
                                 start_pos.GetRow(offset = self.extra_pay_line - 1), start_pos.GetRow(offset = self.extra_pay_line - 1))
         extra_pay_col_data = [["额外开支"]]
         self.feishu_api.WriteValues(self.sheet_id, extra_pay_col_range, extra_pay_col_data)
-        print(f"extra pay range:{extra_pay_col_range}")
+        logger.info("extra pay range:%s", extra_pay_col_range)
 
         summary_col_range = "{}!A{}:A{}".format(self.sheet_id,
                                 start_pos.GetRow(offset = self.summary_line - 1), start_pos.GetRow(offset = self.summary_line - 1))
         summary_col_data = [["合计"]]
         self.feishu_api.WriteValues(self.sheet_id, summary_col_range, summary_col_data)
-        print(f"summary range:{summary_col_range}")
+        logger.info("summary range:%s", summary_col_range)
 
         # 3. 设置每行的背景色：白色和#D5F6F2交替
         # 从第2行开始设置（第1行是表头，不需要设置）
@@ -157,4 +157,4 @@ if __name__ == "__main__":
     summary_sheet = SummarySheet(args.doc_id, args.sheet_id, user_token)
     summary_sheet.init_sheet()
     # summary_sheet.init_sheet()
-    print("SummarySheet 类已创建，需要在 main.py 中使用")
+    logger.info("SummarySheet 类已创建，需要在 main.py 中使用")
