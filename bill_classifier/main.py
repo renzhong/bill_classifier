@@ -58,9 +58,11 @@ def record_to_feishu(feishu_config, bill_item_dict):
         # 填充支出数据
         detail_sheet.fill_data(bill_item_dict['expense'])
 
-    # 处理收入数据
-    # if 'income' in bill_item_dict and len(bill_item_dict['income']) > 0:
-    #     detail_sheet.fill_income_data(feishu_sheet_api, sheet_id, bill_item_dict['income'])
+    # 右侧补充列（策略 3 cross_month_unified 标记的跨月退款 / 购物金跨月退）
+    right_extra = bill_item_dict.get('right_extra') or []
+    if right_extra:
+        logging.info("right_extra item 数量: {}".format(len(right_extra)))
+        detail_sheet.fill_right_extra(right_extra)
 
     # 更新汇总页面
     expense_size = len(bill_item_dict.get('expense', []))
@@ -83,6 +85,34 @@ def debug_bill_item_list(prefix, bill_item_list):
     logging.info("-------{} size:{}--------".format(prefix, len(bill_item_list)))
     for bill_item in bill_item_list:
         logging.info(bill_item)
+
+def _reorder_with_neighbor_groups(items):
+    """策略 4 输出方案 A：同 neighbor_group 的 item 紧邻输出。
+
+    遍历输入顺序，遇到 neighbor_group 非空的 item，紧跟着把同组其他成员
+    一起输出（去重）。锚点的 classify_alg 仍保留 MATCH，只调整顺序。
+    """
+    by_group = {}
+    for it in items:
+        g = getattr(it, 'neighbor_group', None)
+        if g:
+            by_group.setdefault(g, []).append(it)
+
+    out = []
+    seen_ids = set()
+    for it in items:
+        if id(it) in seen_ids:
+            continue
+        out.append(it)
+        seen_ids.add(id(it))
+        g = getattr(it, 'neighbor_group', None)
+        if g:
+            for other in by_group.get(g, []):
+                if id(other) not in seen_ids:
+                    out.append(other)
+                    seen_ids.add(id(other))
+    return out
+
 
 def load_bill_file(config):
     i = 1
@@ -156,7 +186,12 @@ if __name__ == "__main__":
     gpt_data = []
     regular_data = []
     wet_market_data = []
+    right_extra_data = []
     for bill_item in bill_item_list:
+        # 策略 3 标记的跨月退款等：display_section='right_extra' 优先分流到右侧列
+        if getattr(bill_item, 'display_section', None) == 'right_extra':
+            right_extra_data.append(bill_item)
+            continue
         if bill_item.bill_type == BillType.INCOME:
             income_data.append(bill_item)
         elif bill_item.bill_type == BillType.OTHER:
@@ -187,10 +222,13 @@ if __name__ == "__main__":
     expense_data.extend(other_data)
     expense_data.extend(skip_data)
     expense_data.extend(income_data)
+    # 策略 4：同 neighbor_group 的 item 紧邻输出（方案 A）
+    expense_data = _reorder_with_neighbor_groups(expense_data)
 
     bill_item_dict = {
         "expense": expense_data,
         "income": income_data,
+        "right_extra": right_extra_data,
     }
 
     record_to_feishu(bill_config.feishu_config, bill_item_dict)

@@ -2,11 +2,42 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from feishu import FeishuSheetAPI, FeishuUnit
+from feishu import FeishuSheetAPI, FeishuUnit, timestamp2str
 from category import ExpenseCategory, ExtraPayCategory
 from bill_item import ClassifyAlg
 
 logger = logging.getLogger(__name__)
+
+
+# 右侧补充列起始相对偏移：主表 10 列 (offset 0..9) + 1 列空 → offset 11 = L 列
+RIGHT_EXTRA_COL_OFFSET = 11
+RIGHT_EXTRA_COL_SIZE = 4  # 标签 / 时间 / 金额 / 关联说明
+RIGHT_EXTRA_HEADERS = ["类型", "时间", "金额", "关联说明"]
+
+
+def _right_extra_label(item) -> str:
+    """根据 BillItem 的 cross_month_origin / display_section 推 label。"""
+    origin = getattr(item, 'cross_month_origin', None)
+    if origin:
+        origin_item_name = origin.get('item_name') or ''
+        if '购物金' in origin_item_name:
+            return "购物金跨月"
+        return "跨月退款"
+    return "其它"
+
+
+def _right_extra_ref(item) -> str:
+    """关联说明文字。"""
+    origin = getattr(item, 'cross_month_origin', None)
+    if not origin:
+        return ""
+    try:
+        dt = timestamp2str(origin['bill_time'])
+    except Exception:
+        dt = "?"
+    payee = origin.get('payee', '')
+    amount = origin.get('amount', 0.0) or 0.0
+    return f"原支出: {dt} {payee} {amount:.2f}"
 
 class DetailSheet:
     """消费明细页面类，负责处理每月账单明细页面的构建和数据填充"""
@@ -127,23 +158,48 @@ class DetailSheet:
 
         return self.feishu_api.RecordBillItem(sheet_range, bill_item_list)
 
-    def fill_income_data(self, bill_item_list):
-        """填充收入数据到页面（在支出数据右侧，间隔一列）"""
+    def fill_right_extra(self, items):
+        """右侧补充列：4 列 [类型 / 时间 / 金额 / 关联说明]。
+
+        items 中应都是 display_section='right_extra' 的条目（策略 3 标记的跨月退款等）。
+        起始列 = L（主表 10 列 + 间隔 1 列）。
+        """
+        if not items:
+            return True
+
+        bill_size = len(items)
+        # 表头写在第 1 行
+        header_pos = FeishuUnit('1', 'A')
+        header_range = "{}!{}{}:{}{}".format(
+            self.sheet_id,
+            header_pos.GetCol(offset=RIGHT_EXTRA_COL_OFFSET), header_pos.GetRow(),
+            header_pos.GetCol(offset=RIGHT_EXTRA_COL_OFFSET + RIGHT_EXTRA_COL_SIZE - 1),
+            header_pos.GetRow(),
+        )
+        self.feishu_api.WriteValues(self.sheet_id, header_range, [list(RIGHT_EXTRA_HEADERS)])
+
+        # 数据从第 2 行开始
         start_pos = FeishuUnit('2', 'A')
-        # +2: 两块数据要间隔 1 列
-        income_pos = FeishuUnit(start_pos.GetRow(), start_pos.GetCol(offset=self.data_col_size - 1 + 2))
-
-        bill_size = len(bill_item_list)
-        logger.info("income item 数量: {}".format(bill_size))
-
         sheet_range = "{}!{}{}:{}{}".format(
             self.sheet_id,
-            income_pos.GetCol(),
-            income_pos.GetRow(),
-            income_pos.GetCol(offset=self.data_col_size - 1),
-            income_pos.GetRow(offset=bill_size - 1)
+            start_pos.GetCol(offset=RIGHT_EXTRA_COL_OFFSET), start_pos.GetRow(),
+            start_pos.GetCol(offset=RIGHT_EXTRA_COL_OFFSET + RIGHT_EXTRA_COL_SIZE - 1),
+            start_pos.GetRow(offset=bill_size - 1),
         )
-        logger.info("income_item sheet_range:{}".format(sheet_range))
+        logger.info("right_extra sheet_range:{} size:{}".format(sheet_range, bill_size))
 
-        return self.feishu_api.RecordBillItem(sheet_range, bill_item_list)
+        values = []
+        for it in items:
+            try:
+                dt = timestamp2str(it.bill_time)
+            except Exception:
+                dt = "?"
+            values.append([
+                _right_extra_label(it),
+                dt,
+                it.amount,
+                _right_extra_ref(it),
+            ])
+
+        return self.feishu_api.WriteValues(self.sheet_id, sheet_range, values)
 
