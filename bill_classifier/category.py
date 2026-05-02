@@ -33,6 +33,34 @@ class ExtraPayCategory(Enum):
     def to_str(self) -> str:
         return self.value
 
+
+class Lifecycle(Enum):
+    """BillItem 在 pipeline 中的处理状态。
+
+    替代旧设计中"用 ExpenseCategory.UNKNOWN/SKIP 表达状态"的隐式约定。
+    每个 step 处理完一条 item 后，应该把 lifecycle 推进到对应状态。
+    """
+    UNPROCESSED = "未处理"           # 默认初始状态
+    SKIPPED = "跳过"                # 不计入开销，具体原因看 skip_reason
+    CROSS_MONTH_REFUND = "跨月退款"  # 关联到上月原支出，左侧主表保留 + 右侧提醒
+    CLASSIFIED = "已分类"            # 已被分类为某 ExpenseCategory，看 category / classify_alg
+
+    def to_str(self) -> str:
+        return self.value
+
+
+class SkipReason(Enum):
+    """lifecycle == SKIPPED 时记录的原因，便于审计与未来调整。"""
+    FILTER = "filter"                # meican_filter：工作日餐补
+    BLACKLIST = "blacklist"          # skip_keywords：item_name 黑名单
+    NON_EXPENSE = "non_expense"      # bill_type ∈ {INCOME, OTHER} 不计入主表合计
+    ZERO_AMOUNT = "zero_amount"      # merge_refund / taobao_balance_merge 净额为 0
+    REFUND_NO_ORIG = "refund_no_orig"  # merge_refund 无 order_id（已知 bug，保持原行为）
+
+    def to_str(self) -> str:
+        return self.value
+
+
 expense_category_mapping = {category.value: category for category in ExpenseCategory}
 
 class CategoryInfo:

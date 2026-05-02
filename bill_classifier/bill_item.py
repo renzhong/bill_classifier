@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from enum import Enum
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from util import timestamp2str
 
 class BillType(Enum):
@@ -36,8 +36,14 @@ class BillItem:
         self.bill_time = bill_time      # 订单发生时间
         self.bill_source = bill_source  # 订单来源（alipay/wechat）
         self.owner = owner              # 账单人（zrz/cwx）
-        self.category = ExpenseCategory.UNKNOWN  # 分类
-        self.classify_alg = ClassifyAlg.UNKNOWN  # 识别模式
+        self.category = ExpenseCategory.UNKNOWN  # 分类（旧字段，迁移期保留）
+        self.classify_alg = ClassifyAlg.UNKNOWN  # 识别模式（旧字段，迁移期保留）
+        # 生命周期 / 状态机（lifecycle_refactor 引入）：
+        # 各 step 应根据 lifecycle 而不是 category != UNKNOWN 来判断"是否处理过"。
+        # 迁移期与旧 category 状态值（UNKNOWN/SKIP）双写，待全部 step 改造完成后
+        # 再从 ExpenseCategory 中移除状态值。
+        self.lifecycle = Lifecycle.UNPROCESSED
+        self.skip_reason = None             # SkipReason，仅 lifecycle == SKIPPED 时填
         # 策略上下文字段（按需由各 step 写入，默认 None 对其它 step 透明）
         self.neighbor_group = None          # 策略 4：相邻账单组 ID，同组紧邻输出
         self.taobao_balance_extra = None    # 策略 2：购物金合并后追加的说明文本
