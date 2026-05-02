@@ -5,7 +5,7 @@
     - payee in {美团, 美团平台商户, 大众点评, 京东, 京东商家}，或
     - item_name 含订单号特征（"美团订单-" / "订单编号" / 纯长串数字 ≥20 位）
 - 锚点：item bill_time 之后 NEIGHBOR_WINDOW_SECONDS 内（单向，往后看）
-- 锚点条件：classify_alg == ClassifyAlg.MATCH（仅精确匹配；REGULAR / HISTORY /
+- 锚点条件：classify_alg == ClassifyAlg.MATCH（仅精确匹配；REGULAR /
   WET_MARKET 不算锚点，避免链式污染）
 - 严格 1 条：窗口内 0 条 或 ≥2 条 MATCH 锚点 → 不处理（保持 UNKNOWN）
 - 命中：当前 item.category = 锚点 category，classify_alg = ClassifyAlg.NEIGHBOR

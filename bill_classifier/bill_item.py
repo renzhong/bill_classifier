@@ -18,7 +18,6 @@ class ClassifyAlg(Enum):
     REGULAR = "模糊匹配"
     WET_MARKET = "菜场模式"
     GPT = "GPT模式"
-    HISTORY = "历史推断"
     NEIGHBOR = "相邻推断"
     UNKNOWN = "无法识别"
 

@@ -177,7 +177,10 @@ if __name__ == "__main__":
 
     logging.info("标记类型后 item:{}".format(len(bill_item_list)))
 
-    # 拆分数据
+    # 拆分数据。原则：
+    #   左侧（主表）= 所有账单条目，除了已经被合并的（merge_payee/merge_refund 已处理）
+    #     才不会出现，单条账单不因为"也要在右侧出现"而被排除
+    #   右侧（补充列）= 独立的提醒块，从左侧条目额外摘出展示，不影响左侧完整性
     income_data = []
     expense_data = []
     other_data = []
@@ -186,12 +189,11 @@ if __name__ == "__main__":
     gpt_data = []
     regular_data = []
     wet_market_data = []
-    right_extra_data = []
+    # 右侧提醒块：跨月退款关联到原支出的条目（item 同时仍在左侧主表）
+    # 后续可加：未退款预付款提醒（TODO）
+    right_extra_data = [it for it in bill_item_list if getattr(it, 'cross_month_origin', None)]
+
     for bill_item in bill_item_list:
-        # 策略 3 标记的跨月退款等：display_section='right_extra' 优先分流到右侧列
-        if getattr(bill_item, 'display_section', None) == 'right_extra':
-            right_extra_data.append(bill_item)
-            continue
         if bill_item.bill_type == BillType.INCOME:
             income_data.append(bill_item)
         elif bill_item.bill_type == BillType.OTHER:

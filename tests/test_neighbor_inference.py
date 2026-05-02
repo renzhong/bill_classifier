@@ -80,8 +80,8 @@ def test_anchor_at_window_boundary_inclusive():
 
 
 def test_non_match_anchors_ignored():
-    """REGULAR / HISTORY / WET_MARKET / NEIGHBOR / GPT 都不是合格锚点。"""
-    for alg in [ClassifyAlg.REGULAR, ClassifyAlg.HISTORY, ClassifyAlg.WET_MARKET,
+    """REGULAR / WET_MARKET / NEIGHBOR / GPT 都不是合格锚点。"""
+    for alg in [ClassifyAlg.REGULAR, ClassifyAlg.WET_MARKET,
                 ClassifyAlg.NEIGHBOR, ClassifyAlg.GPT]:
         target = _meituan_unknown()
         anchor = _match_anchor(T0 + 100)

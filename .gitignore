@@ -12,3 +12,6 @@ __pycache__/
 
 # 回测产物
 tools/backtest_results/
+
+# 设计文档（仅本地，不入库）
+prd/
