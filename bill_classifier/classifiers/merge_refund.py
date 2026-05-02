@@ -25,7 +25,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem, BillType
-from category import ExpenseCategory
+from category import Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,8 @@ class MergeRefund(Step):
         for item in items:
             if not item.order_id:
                 # 无 order_id 当前直接判 SKIP；TODO.md 已记账后续要修
-                item.category = ExpenseCategory.SKIP
+                item.lifecycle = Lifecycle.SKIPPED
+                item.skip_reason = SkipReason.REFUND_NO_ORIG
                 merged_items.append(item)
                 logger.debug("退款记录丢失原始账单: {}".format(item))
                 continue
@@ -79,7 +80,8 @@ class MergeRefund(Step):
                 debug_str += " - " + str(it.amount)
 
             if merged.amount == 0.0:
-                merged.category = ExpenseCategory.SKIP
+                merged.lifecycle = Lifecycle.SKIPPED
+                merged.skip_reason = SkipReason.ZERO_AMOUNT
 
             merged_items.append(merged)
             logger.debug(

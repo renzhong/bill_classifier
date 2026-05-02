@@ -27,7 +27,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem, ClassifyAlg
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -60,9 +60,10 @@ class WetMarket(Step):
             for j in range(s, e + 1):
                 if j == i:
                     continue
-                if items[j].category == ExpenseCategory.UNKNOWN:
+                if items[j].lifecycle == Lifecycle.UNPROCESSED:
                     items[j].category = ExpenseCategory.BUY_VEGETABLES
                     items[j].classify_alg = ClassifyAlg.WET_MARKET
+                    items[j].lifecycle = Lifecycle.CLASSIFIED
                     mark_count += 1
 
         logger.debug("时间段买菜标记 item size:{}".format(mark_count))

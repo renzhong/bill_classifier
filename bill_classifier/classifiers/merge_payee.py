@@ -22,7 +22,7 @@ import re
 from typing import List
 
 from bill_item import BillItem
-from category import ExpenseCategory
+from category import Lifecycle
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,8 @@ def _merge_one_rule(items: List[BillItem], rule: dict) -> List[BillItem]:
     last_items: List[BillItem] = []
 
     for item in items:
-        if item.category != ExpenseCategory.UNKNOWN:
+        # 已被前置 step 处理过的 item 不参与合并
+        if item.lifecycle != Lifecycle.UNPROCESSED:
             last_items.append(item)
             continue
 

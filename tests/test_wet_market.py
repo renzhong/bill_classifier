@@ -1,5 +1,5 @@
 from bill_item import ClassifyAlg
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.wet_market import WetMarket
 
 from helpers import make_context, make_item
@@ -48,7 +48,7 @@ def test_unknown_outside_window_not_marked():
     far = make_item(item_name="远前", bill_time=ANCHOR_T - WINDOW - 100)
     items = [far, _anchor(), make_item(bill_time=ANCHOR_T + 99999)]
     WetMarket().run(items, make_context())
-    assert far.category == ExpenseCategory.UNKNOWN
+    assert far.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_anchor_with_non_match_alg_does_not_trigger():
@@ -57,12 +57,13 @@ def test_anchor_with_non_match_alg_does_not_trigger():
     anchor.classify_alg = ClassifyAlg.REGULAR
     near = make_item(item_name="附近", bill_time=ANCHOR_T - 100)
     WetMarket().run([near, anchor], make_context())
-    assert near.category == ExpenseCategory.UNKNOWN
+    assert near.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_already_categorized_in_window_not_overwritten():
     near = make_item(item_name="近前", bill_time=ANCHOR_T - 100)
     near.category = ExpenseCategory.CATERING
+    near.lifecycle = Lifecycle.CLASSIFIED
     WetMarket().run([near, _anchor()], make_context())
     assert near.category == ExpenseCategory.CATERING
 
@@ -71,5 +72,5 @@ def test_no_anchor_no_change():
     a = make_item(bill_time=100)
     b = make_item(bill_time=200)
     WetMarket().run([a, b], make_context())
-    assert a.category == ExpenseCategory.UNKNOWN
-    assert b.category == ExpenseCategory.UNKNOWN
+    assert a.lifecycle == Lifecycle.UNPROCESSED
+    assert b.lifecycle == Lifecycle.UNPROCESSED

@@ -1,4 +1,4 @@
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.merge_payee import MergePayee
 
 from helpers import make_context, make_item
@@ -36,7 +36,7 @@ def test_already_categorized_items_skipped():
     """非 UNKNOWN 的 item 不参与合并。"""
     a = make_item(item_name="余额宝-X收益发放", amount=1, owner="A")
     b = make_item(item_name="余额宝-Y收益发放", amount=2, owner="A")
-    b.category = ExpenseCategory.SKIP
+    b.lifecycle = Lifecycle.SKIPPED
     out = MergePayee().run([a, b], make_context())
     assert len(out) == 2
     # b 原样保留

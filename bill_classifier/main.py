@@ -10,7 +10,7 @@ import argparse
 
 from feishu import FeishuSheetAPI
 from feishu_auth import FeishuAuthError, get_valid_user_access_token
-from category import ExpenseCategory
+from category import Lifecycle
 from bill_item import BillType, ClassifyAlg
 from bill import AliPayBill, WeChatBill
 from bill_config import BillConfig
@@ -77,9 +77,9 @@ def record_to_feishu(feishu_config, bill_item_dict):
 def check_unknown_items(bill_item_list):
     count = 0
     for item in bill_item_list:
-        if item.category == ExpenseCategory.UNKNOWN:
+        if item.lifecycle == Lifecycle.UNPROCESSED:
             count += 1
-    logging.debug("unknown category item size:{}".format(count))
+    logging.debug("unprocessed item size:{}".format(count))
 
 def debug_bill_item_list(prefix, bill_item_list):
     logging.info("-------{} size:{}--------".format(prefix, len(bill_item_list)))
@@ -112,6 +112,69 @@ def _reorder_with_neighbor_groups(items):
                     out.append(other)
                     seen_ids.add(id(other))
     return out
+
+
+# CLASSIFIED 类的展示顺序（按 classify_alg 二级分组）
+_CLASSIFIED_ALG_ORDER = (
+    ClassifyAlg.MATCH,
+    ClassifyAlg.REGULAR,
+    ClassifyAlg.WET_MARKET,
+    ClassifyAlg.NEIGHBOR,
+    ClassifyAlg.GPT,
+)
+
+
+def split_for_output(bill_item_list):
+    """按 lifecycle 一级 + classify_alg 二级分流，返回 (主表 list, 收入 list, 右侧提醒 list)。
+
+    主表展示顺序：
+        CLASSIFIED 按 classify_alg：MATCH → REGULAR → WET_MARKET → NEIGHBOR → GPT
+        → UNPROCESSED（等人工标）
+        → CROSS_MONTH_REFUND（跨月退款，左侧主表保留 + 右侧也展示一份）
+        → SKIPPED（被各种 reason 跳过的）
+        → INCOME 类（最底部，按 bill_type=INCOME 单独分组）
+
+    最后对主表应用 neighbor_group 紧邻重排（方案 A）。
+    右侧提醒：所有挂了 cross_month_origin 的条目（这些条目同时仍在左侧主表）。
+    """
+    classified_buckets = {alg: [] for alg in _CLASSIFIED_ALG_ORDER}
+    unprocessed_data = []
+    cross_month_data = []
+    skipped_data = []
+    income_data = []
+
+    for it in bill_item_list:
+        # bill_type=INCOME 的 item 已被 non_expense_skip 标 SKIPPED；
+        # 但视觉上分组为"收入"放底部，所以这里优先按 bill_type 判断。
+        if it.bill_type == BillType.INCOME:
+            income_data.append(it)
+            continue
+        if it.lifecycle == Lifecycle.CLASSIFIED:
+            bucket = classified_buckets.get(it.classify_alg)
+            if bucket is not None:
+                bucket.append(it)
+            else:
+                # 防御：未知 classify_alg，归到 unprocessed
+                unprocessed_data.append(it)
+        elif it.lifecycle == Lifecycle.CROSS_MONTH_REFUND:
+            cross_month_data.append(it)
+        elif it.lifecycle == Lifecycle.SKIPPED:
+            skipped_data.append(it)
+        else:  # UNPROCESSED
+            unprocessed_data.append(it)
+
+    main_data = []
+    for alg in _CLASSIFIED_ALG_ORDER:
+        main_data.extend(classified_buckets[alg])
+    main_data.extend(unprocessed_data)
+    main_data.extend(cross_month_data)
+    main_data.extend(skipped_data)
+    main_data.extend(income_data)
+
+    main_data = _reorder_with_neighbor_groups(main_data)
+
+    right_extra = [it for it in bill_item_list if getattr(it, 'cross_month_origin', None)]
+    return main_data, income_data, right_extra
 
 
 def load_bill_file(config):
@@ -178,57 +241,15 @@ if __name__ == "__main__":
     logging.info("标记类型后 item:{}".format(len(bill_item_list)))
 
     # 拆分数据。原则：
-    #   左侧（主表）= 所有账单条目，除了已经被合并的（merge_payee/merge_refund 已处理）
-    #     才不会出现，单条账单不因为"也要在右侧出现"而被排除
-    #   右侧（补充列）= 独立的提醒块，从左侧条目额外摘出展示，不影响左侧完整性
-    income_data = []
-    expense_data = []
-    other_data = []
-    skip_data = []
-    unknown_data = []
-    gpt_data = []
-    regular_data = []
-    wet_market_data = []
-    # 右侧提醒块：跨月退款关联到原支出的条目（item 同时仍在左侧主表）
-    # 后续可加：未退款预付款提醒（TODO）
-    right_extra_data = [it for it in bill_item_list if getattr(it, 'cross_month_origin', None)]
-
-    for bill_item in bill_item_list:
-        if bill_item.bill_type == BillType.INCOME:
-            income_data.append(bill_item)
-        elif bill_item.bill_type == BillType.OTHER:
-            other_data.append(bill_item)
-        else:  # EXPENSE
-            if bill_item.category == ExpenseCategory.UNKNOWN:
-                unknown_data.append(bill_item)
-            elif bill_item.classify_alg == ClassifyAlg.GPT:
-                gpt_data.append(bill_item)
-            elif bill_item.classify_alg == ClassifyAlg.REGULAR:
-                regular_data.append(bill_item)
-            elif bill_item.classify_alg == ClassifyAlg.WET_MARKET:
-                wet_market_data.append(bill_item)
-            elif bill_item.category == ExpenseCategory.BUY_VEGETABLES:
-                wet_market_data.append(bill_item)
-            elif bill_item.category == ExpenseCategory.SKIP:
-                skip_data.append(bill_item)
-            else:
-                if bill_item.amount == 0.0:
-                    skip_data.append(bill_item)
-                else:
-                    expense_data.append(bill_item)
-
-    expense_data.extend(regular_data)
-    expense_data.extend(wet_market_data)
-    expense_data.extend(gpt_data)
-    expense_data.extend(unknown_data)
-    expense_data.extend(other_data)
-    expense_data.extend(skip_data)
-    expense_data.extend(income_data)
-    # 策略 4：同 neighbor_group 的 item 紧邻输出（方案 A）
-    expense_data = _reorder_with_neighbor_groups(expense_data)
+    #   左侧（主表）= 所有账单条目（按 lifecycle 一级分流 + CLASSIFIED 内按
+    #     classify_alg 二级分组）。只有在 merge_payee / merge_refund /
+    #     taobao_balance_merge 中"被合并掉"的条目才会从 list 里移除，
+    #     单条账单不因为"也要在右侧出现"而被排除。
+    #   右侧（补充列）= 独立的提醒块，从左侧条目额外摘出展示，不影响左侧完整性。
+    main_data, income_data, right_extra_data = split_for_output(bill_item_list)
 
     bill_item_dict = {
-        "expense": expense_data,
+        "expense": main_data,
         "income": income_data,
         "right_extra": right_extra_data,
     }

@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from bill_item import ClassifyAlg
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.gpt import GPTStep
 
 from helpers import FakeGPTClassifier, make_context, make_item
@@ -24,11 +24,11 @@ def test_unknown_item_classified_via_gpt():
 
 def test_already_categorized_skipped_no_call():
     item = make_item(item_name="x", payee="y")
-    item.category = ExpenseCategory.SKIP
+    item.lifecycle = Lifecycle.SKIPPED
     fake = FakeGPTClassifier(default="餐饮")
     GPTStep().run([item], make_context(gpt_classifier=fake, bill_config=_bill_config()))
     assert fake.calls == []
-    assert item.category == ExpenseCategory.SKIP
+    assert item.lifecycle == Lifecycle.SKIPPED
 
 
 def test_meituan_payee_skipped():
@@ -37,8 +37,8 @@ def test_meituan_payee_skipped():
     fake = FakeGPTClassifier(default="餐饮")
     GPTStep().run([a, b], make_context(gpt_classifier=fake, bill_config=_bill_config()))
     assert fake.calls == []
-    assert a.category == ExpenseCategory.UNKNOWN
-    assert b.category == ExpenseCategory.UNKNOWN
+    assert a.lifecycle == Lifecycle.UNPROCESSED
+    assert b.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_jd_with_order_id_in_name_skipped():
@@ -47,7 +47,7 @@ def test_jd_with_order_id_in_name_skipped():
     fake = FakeGPTClassifier(default="餐饮")
     GPTStep().run([a, b], make_context(gpt_classifier=fake, bill_config=_bill_config()))
     assert len(fake.calls) == 1
-    assert a.category == ExpenseCategory.UNKNOWN
+    assert a.lifecycle == Lifecycle.UNPROCESSED
     assert b.category == ExpenseCategory.CATERING
 
 
@@ -63,17 +63,17 @@ def test_unknown_response_text_does_not_set_category():
     item = make_item(item_name="x", payee="y")
     fake = FakeGPTClassifier(default="不是合法分类的随便字符串")
     GPTStep().run([item], make_context(gpt_classifier=fake, bill_config=_bill_config()))
-    assert item.category == ExpenseCategory.UNKNOWN
+    assert item.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_empty_response_does_not_set_category():
     item = make_item(item_name="x", payee="y")
     fake = FakeGPTClassifier(default="")
     GPTStep().run([item], make_context(gpt_classifier=fake, bill_config=_bill_config()))
-    assert item.category == ExpenseCategory.UNKNOWN
+    assert item.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_no_classifier_skips_step():
     item = make_item(item_name="x", payee="y")
     GPTStep().run([item], make_context(gpt_classifier=None, bill_config=_bill_config()))
-    assert item.category == ExpenseCategory.UNKNOWN
+    assert item.lifecycle == Lifecycle.UNPROCESSED

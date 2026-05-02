@@ -1,7 +1,7 @@
 import datetime
 
 from bill_item import BillType
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.meican_filter import MeicanFilter
 
 from helpers import make_context, make_item
@@ -15,19 +15,19 @@ def _ts(year=2025, month=1, day=6, hour=18, minute=0):
 def test_weekday_18_marked_skip():
     item = make_item(payee="高德地图总部-美餐餐厅A区", bill_time=_ts(hour=18))
     MeicanFilter().run([item], make_context())
-    assert item.category == ExpenseCategory.SKIP
+    assert item.lifecycle == Lifecycle.SKIPPED
 
 
 def test_weekday_21_marked_skip():
     item = make_item(payee="高德地图总部-美餐餐厅B区", bill_time=_ts(hour=21))
     MeicanFilter().run([item], make_context())
-    assert item.category == ExpenseCategory.SKIP
+    assert item.lifecycle == Lifecycle.SKIPPED
 
 
 def test_weekday_19_not_marked():
     item = make_item(payee="高德地图总部-美餐餐厅A区", bill_time=_ts(hour=19))
     MeicanFilter().run([item], make_context())
-    assert item.category == ExpenseCategory.UNKNOWN
+    assert item.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_weekend_18_not_marked():
@@ -36,13 +36,13 @@ def test_weekend_18_not_marked():
         bill_time=_ts(year=2025, month=1, day=11, hour=18),  # 周六
     )
     MeicanFilter().run([item], make_context())
-    assert item.category == ExpenseCategory.UNKNOWN
+    assert item.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_other_payee_untouched():
     item = make_item(payee="星巴克", bill_time=_ts(hour=18))
     MeicanFilter().run([item], make_context())
-    assert item.category == ExpenseCategory.UNKNOWN
+    assert item.lifecycle == Lifecycle.UNPROCESSED
 
 
 def test_returns_same_list_object():
@@ -59,4 +59,4 @@ def test_income_in_window_also_marked_when_payee_matches():
         bill_time=_ts(hour=18),
     )
     MeicanFilter().run([item], make_context())
-    assert item.category == ExpenseCategory.SKIP
+    assert item.lifecycle == Lifecycle.SKIPPED

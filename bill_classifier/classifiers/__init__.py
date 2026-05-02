@@ -4,6 +4,7 @@ from classifiers.merge_payee import MergePayee
 from classifiers.merge_refund import MergeRefund
 from classifiers.taobao_balance_merge import TaobaoBalanceMerge
 from classifiers.cross_month_unified import CrossMonthUnified
+from classifiers.non_expense_skip import NonExpenseSkip
 from classifiers.exact_match import ExactMatch
 from classifiers.regex_match import RegexMatch
 from classifiers.skip_keywords import SkipKeywords
@@ -17,6 +18,7 @@ DEFAULT_STEPS = [
     "merge_refund",
     "taobao_balance_merge",
     "cross_month_unified",
+    "non_expense_skip",
     "exact_match",
     "regex_match",
     "skip_keywords",
@@ -31,6 +33,7 @@ STEP_REGISTRY = {
     "merge_refund": MergeRefund,
     "taobao_balance_merge": TaobaoBalanceMerge,
     "cross_month_unified": CrossMonthUnified,
+    "non_expense_skip": NonExpenseSkip,
     "exact_match": ExactMatch,
     "regex_match": RegexMatch,
     "skip_keywords": SkipKeywords,
