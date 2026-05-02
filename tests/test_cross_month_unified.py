@@ -108,7 +108,7 @@ def test_alipay_order_id_core_match_relinks_to_right_extra():
     step = CrossMonthUnified(history_loader=_make_loader([history_origin]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section == "right_extra"
+    assert orphan.cross_month_origin is not None
     assert orphan.cross_month_origin is not None
     assert orphan.cross_month_origin["amount"] == 300
     assert orphan.cross_month_origin["payee"] == "淘宝商家"
@@ -125,7 +125,7 @@ def test_alipay_order_id_no_match_falls_back_to_payee_amount():
     step = CrossMonthUnified(history_loader=_make_loader([history_origin]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section == "right_extra"
+    assert orphan.cross_month_origin is not None
     assert orphan.cross_month_origin["bill_time"] == history_origin.bill_time
 
 
@@ -159,7 +159,7 @@ def test_wechat_unique_payee_amount_match_relinks():
     step = CrossMonthUnified(history_loader=_make_loader([history_origin]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section == "right_extra"
+    assert orphan.cross_month_origin is not None
     assert orphan.cross_month_origin["payee"] == "北京大学国际医院"
 
 
@@ -171,18 +171,18 @@ def test_wechat_multiple_candidates_not_relinked():
     step = CrossMonthUnified(history_loader=_make_loader([h1, h2]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section is None
+    assert orphan.cross_month_origin is None
     assert orphan.cross_month_origin is None
 
 
 def test_no_history_match_keeps_orphan_unchanged():
-    """完全没匹配 → 不改 display_section / cross_month_origin。"""
+    """完全没匹配 → cross_month_origin 仍为 None。"""
     orphan = _orphan_wechat_refund(amount=99, payee="陌生店家-退款")
     history_origin = _history_expense(amount=50, payee="某店", source="wechat")
     step = CrossMonthUnified(history_loader=_make_loader([history_origin]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section is None
+    assert orphan.cross_month_origin is None
     assert orphan.cross_month_origin is None
 
 
@@ -193,7 +193,7 @@ def test_amount_must_match_strictly():
     step = CrossMonthUnified(history_loader=_make_loader([history_origin]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section is None
+    assert orphan.cross_month_origin is None
 
 
 def test_source_must_match_alipay_history_doesnt_help_wechat_orphan():
@@ -203,7 +203,7 @@ def test_source_must_match_alipay_history_doesnt_help_wechat_orphan():
     step = CrossMonthUnified(history_loader=_make_loader([alipay_history]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section is None
+    assert orphan.cross_month_origin is None
 
 
 def test_history_must_be_expense_not_other():
@@ -217,7 +217,7 @@ def test_history_must_be_expense_not_other():
     step = CrossMonthUnified(history_loader=_make_loader([other_in_history]))
     step.run([orphan], make_context())
 
-    assert orphan.display_section is None
+    assert orphan.cross_month_origin is None
 
 
 def test_no_orphans_no_history_loader_call():
@@ -248,8 +248,8 @@ def test_multiple_orphans_independent_lookup():
     step = CrossMonthUnified(history_loader=_make_loader([h1, h2]))
     step.run([orphan1, orphan2], make_context())
 
-    assert orphan1.display_section == "right_extra"
-    assert orphan2.display_section == "right_extra"
+    assert orphan1.cross_month_origin is not None
+    assert orphan2.cross_month_origin is not None
 
 
 def test_history_loader_exception_does_not_break_pipeline():
@@ -263,5 +263,5 @@ def test_history_loader_exception_does_not_break_pipeline():
     step = CrossMonthUnified(history_loader=bad_loader)
     out = step.run([orphan, normal], make_context())
 
-    assert orphan.display_section is None
+    assert orphan.cross_month_origin is None
     assert orphan in out and normal in out

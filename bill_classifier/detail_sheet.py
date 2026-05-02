@@ -16,7 +16,7 @@ RIGHT_EXTRA_HEADERS = ["类型", "时间", "金额", "关联说明"]
 
 
 def _right_extra_label(item) -> str:
-    """根据 BillItem 的 cross_month_origin / display_section 推 label。"""
+    """根据 BillItem 的 cross_month_origin 推 label。"""
     origin = getattr(item, 'cross_month_origin', None)
     if origin:
         origin_item_name = origin.get('item_name') or ''
@@ -161,7 +161,7 @@ class DetailSheet:
     def fill_right_extra(self, items):
         """右侧补充列：4 列 [类型 / 时间 / 金额 / 关联说明]。
 
-        items 中应都是 display_section='right_extra' 的条目（策略 3 标记的跨月退款等）。
+        items 中应都是带 cross_month_origin 标记的条目（策略 3 标记的跨月退款等）。
         起始列 = L（主表 10 列 + 间隔 1 列）。
         """
         if not items:

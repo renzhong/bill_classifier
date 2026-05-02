@@ -13,8 +13,9 @@
 
 输出：
 - 关联成功：item.cross_month_origin = {payee, amount, bill_time, item_name, order_id, ...}
-            item.display_section = "right_extra"
             原 bill_type / category 不变（OTHER 不计支出，月度汇总不算它）
+            该 item 仍留在主表（左右分区原则），同时由输出层从 cross_month_origin
+            非空摘出来，在右侧"提醒块"再展示一份
 - 关联失败：保留现状（OTHER），后续 exact_match 会标 SKIP
 
 实施位置：taobao_balance_merge 之后、exact_match 之前。同月合并都跑完之后再做跨月识别。
@@ -38,7 +39,6 @@ logger = logging.getLogger(__name__)
 
 
 HISTORY_WINDOW_MONTHS = 6
-DISPLAY_RIGHT_EXTRA = "right_extra"
 WECHAT_REFUND_SUFFIX = "-退款"
 
 
@@ -149,7 +149,6 @@ class CrossMonthUnified(Step):
             origin, status = self._lookup(orphan, core_oid_index, payee_amount_index)
             if origin is not None:
                 orphan.cross_month_origin = origin
-                orphan.display_section = DISPLAY_RIGHT_EXTRA
                 match_count += 1
             elif status == "ambiguous":
                 ambiguous_count += 1
