@@ -25,7 +25,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem, BillType, ClassifyAlg
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -47,21 +47,26 @@ class ExactMatch(Step):
 
         mark_count = 0
         for item in items:
-            if item.category != ExpenseCategory.UNKNOWN:
+            # 已被前置 step 处理过的（含 cross_month_unified 标的 CROSS_MONTH_REFUND）跳过
+            if item.lifecycle != Lifecycle.UNPROCESSED or item.category != ExpenseCategory.UNKNOWN:
                 continue
             if item.bill_type != BillType.EXPENSE:
-                item.category = ExpenseCategory.SKIP
+                item.category = ExpenseCategory.SKIP  # 双写
+                item.lifecycle = Lifecycle.SKIPPED
+                item.skip_reason = SkipReason.NON_EXPENSE
                 continue
 
             if item.item_name in info.item_category_dict:
                 item.category = info.item_category_dict[item.item_name]
                 item.classify_alg = ClassifyAlg.MATCH
+                item.lifecycle = Lifecycle.CLASSIFIED
                 mark_count += 1
                 continue
 
             if item.payee in info.payee_category_dict:
                 item.category = info.payee_category_dict[item.payee]
                 item.classify_alg = ClassifyAlg.MATCH
+                item.lifecycle = Lifecycle.CLASSIFIED
                 mark_count += 1
 
         logger.debug("exact_match 标记 item size:{}".format(mark_count))

@@ -32,6 +32,7 @@ import logging
 from typing import Callable, Dict, List, Optional, Tuple
 
 from bill_item import BillItem, BillType
+from category import Lifecycle
 from classifiers.base import Context, Step
 from classifiers.taobao_balance_merge import _extract_core_order_id
 
@@ -149,6 +150,7 @@ class CrossMonthUnified(Step):
             origin, status = self._lookup(orphan, core_oid_index, payee_amount_index)
             if origin is not None:
                 orphan.cross_month_origin = origin
+                orphan.lifecycle = Lifecycle.CROSS_MONTH_REFUND
                 match_count += 1
             elif status == "ambiguous":
                 ambiguous_count += 1

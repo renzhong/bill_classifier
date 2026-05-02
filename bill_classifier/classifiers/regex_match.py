@@ -25,7 +25,7 @@ import logging
 from typing import List
 
 from bill_item import BillItem, ClassifyAlg
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class RegexMatch(Step):
 
         mark_count = 0
         for item in items:
-            if item.category != ExpenseCategory.UNKNOWN:
+            if item.lifecycle != Lifecycle.UNPROCESSED or item.category != ExpenseCategory.UNKNOWN:
                 continue
 
             matched = False
@@ -55,6 +55,7 @@ class RegexMatch(Step):
                 if needle in item.item_name:
                     item.category = category
                     item.classify_alg = ClassifyAlg.REGULAR
+                    item.lifecycle = Lifecycle.CLASSIFIED
                     mark_count += 1
                     matched = True
                     break
@@ -65,6 +66,7 @@ class RegexMatch(Step):
                 if needle in item.payee:
                     item.category = category
                     item.classify_alg = ClassifyAlg.REGULAR
+                    item.lifecycle = Lifecycle.CLASSIFIED
                     mark_count += 1
                     break
 

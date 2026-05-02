@@ -39,7 +39,7 @@ import logging
 from typing import Dict, List, Optional
 
 from bill_item import BillItem, BillType
-from category import ExpenseCategory
+from category import ExpenseCategory, Lifecycle, SkipReason
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,9 @@ class TaobaoBalanceMerge(Step):
             primary.amount = net
             primary.taobao_balance_extra = f"购物金消费余额: {net:.2f}"
             if net == 0:
-                primary.category = ExpenseCategory.SKIP
+                primary.category = ExpenseCategory.SKIP  # 双写
+                primary.lifecycle = Lifecycle.SKIPPED
+                primary.skip_reason = SkipReason.ZERO_AMOUNT
             merged.append(primary)
 
             logger.info(
