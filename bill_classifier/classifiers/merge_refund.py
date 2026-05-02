@@ -11,8 +11,7 @@
         - 净支出 ≥ 0.01 → lifecycle=UNPROCESSED + classify_alg=MERGED（中间态，
           后续分类 step 命中时会被覆盖）
         - 只有 refund_items（找不到原支出）→ 退款条目原样保留
-- 无 order_id 的记录直接标 SKIP
-  （已知问题：会丢掉微信红包 / 转账等，TODO.md 已记录）
+- 无 order_id 的记录原样 passthrough（不能按 order_id 合并，但保留交给后续 step）
 
 合并产生的条目还会写：
     is_merged = True
@@ -24,7 +23,7 @@
 - order O1：预付款 10 + 尾款 30 → 一条 40，classify_alg=MERGED
 - order O2：商品 20 - 商品退款 20 → 一条 0，SKIPPED + FULL_REFUND
 - order O3：商品 20 - 退款 5 → 一条 15，classify_alg=MERGED
-- 无 order_id 的微信红包 → SKIPPED + REFUND_NO_ORIG
+- 无 order_id 的微信红包/转账 → 原样保留，由后续 non_expense_skip / 分类 step 处理
 """
 
 import copy
@@ -54,11 +53,8 @@ class MergeRefund(Step):
 
         for item in items:
             if not item.order_id:
-                # 无 order_id 当前直接判 SKIP；TODO.md 已记账后续要修
-                item.lifecycle = Lifecycle.SKIPPED
-                item.skip_reason = SkipReason.REFUND_NO_ORIG
+                # 无 order_id 不参与按 order_id 合并，原样保留交给后续 step
                 merged_items.append(item)
-                logger.debug("退款记录丢失原始账单: {}".format(item))
                 continue
             order_items.setdefault(item.order_id, []).append(item)
 

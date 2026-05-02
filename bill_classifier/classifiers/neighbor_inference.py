@@ -99,9 +99,11 @@ class NeighborInference(Step):
             )
             for ci in chain:
                 c = items[ci]
+                # 仅作"跟随锚点"的标记：写 category / FOLLOW / group_id，
+                # lifecycle 保持原状（UNPROCESSED）。下游消费时不要依赖
+                # lifecycle == CLASSIFIED 来判断这类条目。
                 c.category = anchor_item.category
                 c.classify_alg = ClassifyAlg.FOLLOW
-                c.lifecycle = Lifecycle.CLASSIFIED
                 c.group_id = group_id
                 marked_count += 1
             anchor_item.group_id = group_id

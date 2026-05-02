@@ -36,7 +36,7 @@ class BillItem:
         """飞书表格'分类'列展示值（按 bill_type / lifecycle 派生）。"""
         if self.bill_type == BillType.INCOME:
             return ExpenseCategory.INCOME.to_str()
-        if self.lifecycle == Lifecycle.CLASSIFIED and self.category is not None:
+        if self.category is not None:
             return self.category.to_str()
         if self.lifecycle == Lifecycle.CROSS_MONTH_REFUND:
             return ExpenseCategory.REFUND.to_str()

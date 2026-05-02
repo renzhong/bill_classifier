@@ -4,11 +4,13 @@ from classifiers.merge_refund import MergeRefund
 from helpers import make_context, make_item
 
 
-def test_no_order_id_marked_skip():
+def test_no_order_id_passthrough():
     item = make_item(amount=10, order_id="")
     out = MergeRefund().run([item], make_context())
     assert len(out) == 1
-    assert out[0].lifecycle == Lifecycle.SKIPPED
+    assert out[0] is item
+    assert out[0].lifecycle == Lifecycle.UNPROCESSED
+    assert out[0].skip_reason is None
 
 
 def test_single_item_with_order_id_passthrough():

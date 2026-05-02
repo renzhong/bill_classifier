@@ -72,7 +72,3 @@ def test_empty_response_does_not_set_category():
     assert item.lifecycle == Lifecycle.UNPROCESSED
 
 
-def test_no_classifier_skips_step():
-    item = make_item(item_name="x", payee="y")
-    GPTStep().run([item], make_context(gpt_classifier=None, bill_config=_bill_config()))
-    assert item.lifecycle == Lifecycle.UNPROCESSED

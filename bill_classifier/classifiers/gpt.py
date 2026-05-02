@@ -43,10 +43,6 @@ class GPTStep(Step):
 
     def run(self, items: List[BillItem], ctx: Context) -> List[BillItem]:
         classifier = ctx.gpt_classifier_factory()
-        if classifier is None:
-            logger.error("gpt 跳过：未提供 classifier")
-            return items
-
         call_limit = ctx.bill_config.gpt_config.call_limit
         mark_count = 0
 

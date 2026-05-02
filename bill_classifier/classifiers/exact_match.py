@@ -9,7 +9,7 @@
     2. 否则 payee 命中 payee_category_dict → 取对应 category
     3. 都不命中 → 留给后续 step
 - 命中后 classify_alg 标 ClassifyAlg.MATCH（这是 wet_market 锚点的判定条件）
-- 非支出（INCOME / OTHER）直接标 SKIP
+- 非支出（INCOME / OTHER）由 non_expense_skip 处理，本 step 不动它们
 
 依赖飞书 IO 拉取的 CategoryInfo；拉取失败时只跳过本 step，
 其他规则不受影响（ctx.category_info_loader 失败时返回 (False, None)）。
@@ -18,14 +18,13 @@
 - item_name="地铁单程票", payee="任意" → TRANSPORTATION
 - item_name="未知商品", payee="星巴克" → CATERING
 - item_name="未知", payee="未知" → 留给 regex_match / GPT
-- bill_type=INCOME 的工资记录 → SKIP
 """
 
 import logging
 from typing import List
 
 from bill_item import BillItem
-from category import BillType, ClassifyAlg, Lifecycle, SkipReason
+from category import BillType, ClassifyAlg, Lifecycle
 from classifiers.base import Context, Step
 
 logger = logging.getLogger(__name__)
@@ -51,10 +50,8 @@ class ExactMatch(Step):
             # cross_month_unified 标的 CROSS_MONTH_REFUND）跳过
             if item.lifecycle != Lifecycle.UNPROCESSED:
                 continue
-            # 防御：理论上 non_expense_skip 已把非支出标 SKIPPED，不会到这里
+            # 非 EXPENSE 不在本 step 职责范围内：不分类也不打 SKIP，原样跳过
             if item.bill_type != BillType.EXPENSE:
-                item.lifecycle = Lifecycle.SKIPPED
-                item.skip_reason = SkipReason.NON_EXPENSE
                 continue
 
             if item.item_name in info.item_category_dict:
